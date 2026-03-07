@@ -77,13 +77,15 @@ button { cursor:pointer; border:none; font-family:inherit; font-size:inherit; }
 .flashcard { width:100%; min-height:300px; position:relative; transform-style:preserve-3d; transition:transform 0.6s; cursor:pointer; }
 .flashcard.flipped { transform:rotateY(180deg); }
 .flashcard-face { position:absolute; width:100%; min-height:300px; backface-visibility:hidden; background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); display:flex; flex-direction:column; justify-content:center; align-items:center; padding:30px; }
-.flashcard-back { transform:rotateY(180deg); text-align:left; align-items:stretch; }
-.flashcard-front .word { font-size:3rem; font-weight:bold; margin-bottom:8px; }
-.flashcard-front .reading { font-size:1.2rem; color:var(--text-light); }
-.flashcard-front .hint { font-size:0.85rem; color:var(--primary); margin-top:16px; }
-.flashcard-back .meaning { font-size:1.1rem; margin-bottom:12px; padding:12px; background:var(--primary-light); border-radius:8px; }
-.flashcard-back .example { font-size:0.95rem; color:var(--text-light); margin-bottom:8px; padding:10px; border-left:3px solid var(--primary); }
-.flashcard-back .scene-tag { display:inline-block; padding:4px 10px; background:#e2e8f0; border-radius:6px; font-size:0.8rem; margin-top:8px; }
+.flashcard-back { transform:rotateY(180deg); text-align:center; }
+.flashcard-front .fc-meaning { font-size:1.05rem; margin-bottom:16px; padding:14px; background:var(--primary-light); border-radius:8px; text-align:left; line-height:1.7; }
+.flashcard-front .fc-example-hint { font-size:1rem; color:var(--text); margin-bottom:12px; padding:12px; border-left:3px solid var(--primary); text-align:left; line-height:1.7; }
+.flashcard-front .fc-example-hint .blank { font-weight:bold; color:var(--primary); font-size:1.1em; }
+.flashcard-front .hint { font-size:0.85rem; color:var(--text-light); margin-top:12px; }
+.flashcard-front .fc-meta { display:flex; gap:8px; align-items:center; margin-top:8px; }
+.flashcard-front .scene-tag { display:inline-block; padding:4px 10px; background:#e2e8f0; border-radius:6px; font-size:0.8rem; }
+.flashcard-back .fc-answer { font-size:3rem; font-weight:bold; margin-bottom:8px; }
+.flashcard-back .fc-answer-reading { font-size:1.2rem; color:var(--text-light); }
 .flashcard-actions { display:flex; gap:12px; justify-content:center; margin-bottom:16px; }
 .flashcard-actions button { padding:12px 28px; border-radius:10px; font-size:1rem; font-weight:600; }
 .btn-know { background:var(--success); color:#fff; }
@@ -164,7 +166,8 @@ button { cursor:pointer; border:none; font-family:inherit; font-size:inherit; }
   .mode-grid { grid-template-columns:1fr 1fr; }
   .form-grid { grid-template-columns:1fr; }
   .match-grid { grid-template-columns:repeat(3,1fr); }
-  .flashcard-front .word { font-size:2.2rem; }
+  .flashcard-front .fc-meaning { font-size:0.95rem; }
+  .flashcard-back .fc-answer { font-size:2.2rem; }
   .filter-bar { padding:10px 12px; }
 }
 @media (max-width:400px) {
@@ -249,17 +252,17 @@ button { cursor:pointer; border:none; font-family:inherit; font-size:inherit; }
   <div class="flashcard-container">
     <div class="flashcard" id="flashcard" onclick="app.flipCard()">
       <div class="flashcard-face flashcard-front">
-        <div class="word" id="fcWord"></div>
-        <div class="reading" id="fcReading"></div>
-        <div class="hint">タップしてめくる</div>
-      </div>
-      <div class="flashcard-face flashcard-back">
-        <div class="meaning" id="fcMeaning"></div>
-        <div class="example" id="fcExample"></div>
-        <div>
+        <div class="fc-meaning" id="fcMeaning"></div>
+        <div class="fc-example-hint" id="fcExampleHint"></div>
+        <div class="fc-meta">
           <span class="scene-tag" id="fcScene"></span>
           <span class="level-badge" id="fcLevel"></span>
         </div>
+        <div class="hint">タップして答えを見る</div>
+      </div>
+      <div class="flashcard-face flashcard-back">
+        <div class="fc-answer" id="fcAnswer"></div>
+        <div class="fc-answer-reading" id="fcAnswerReading"></div>
       </div>
     </div>
   </div>
@@ -616,6 +619,41 @@ const app = {
     this.renderFlashcard();
   },
 
+  // Generate hint: first reading char + 〇 for remaining word chars
+  makeHint(word, reading) {
+    const firstChar = reading.charAt(0);
+    const rest = '〇'.repeat(word.length - 1);
+    return firstChar + rest;
+  },
+
+  // Replace word in example with hint brackets
+  makeExampleWithHint(example, word, reading) {
+    const hint = '【' + this.makeHint(word, reading) + '】';
+    // Try exact match first
+    if (example.includes(word)) {
+      return example.replace(word, hint);
+    }
+    // Try stems by removing common suffixes
+    const suffixes = ['する', 'い', 'な', 'に浸る', 'の念', 'たる'];
+    for (const suffix of suffixes) {
+      if (word.endsWith(suffix)) {
+        const stem = word.slice(0, -suffix.length);
+        if (stem.length >= 1 && example.includes(stem)) {
+          return example.replace(stem, hint);
+        }
+      }
+    }
+    // Try progressively shorter prefixes of the word
+    for (let len = word.length - 1; len >= 2; len--) {
+      const prefix = word.slice(0, len);
+      if (example.includes(prefix)) {
+        return example.replace(prefix, hint);
+      }
+    }
+    // Fallback: prepend hint
+    return hint + '　' + example;
+  },
+
   renderFlashcard() {
     if (this.fcIndex >= this.fcCards.length) {
       const total = this.fcCards.length;
@@ -626,14 +664,17 @@ const app = {
     }
     const w = this.fcCards[this.fcIndex];
     document.getElementById('cardCounter').textContent = `${this.fcIndex+1} / ${this.fcCards.length}`;
-    document.getElementById('fcWord').textContent = w.word;
-    document.getElementById('fcReading').textContent = w.reading;
+    // Front: meaning + example with hint
     document.getElementById('fcMeaning').textContent = w.meaning;
-    document.getElementById('fcExample').textContent = `「${w.example}」`;
+    const hintExample = this.makeExampleWithHint(w.example, w.word, w.reading);
+    document.getElementById('fcExampleHint').innerHTML = '「' + hintExample.replace(/【(.+?)】/, '<span class="blank">【$1】</span>') + '」';
     const s = SCENES.find(s => s.id === w.scene);
     document.getElementById('fcScene').textContent = s ? s.name : '';
     document.getElementById('fcLevel').textContent = '★'.repeat(w.level);
     document.getElementById('fcLevel').className = `level-badge level-${w.level}`;
+    // Back: answer
+    document.getElementById('fcAnswer').textContent = w.word;
+    document.getElementById('fcAnswerReading').textContent = w.reading;
     document.getElementById('flashcard').classList.remove('flipped');
   },
 
