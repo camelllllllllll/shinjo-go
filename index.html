@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>心情語マスター</title>
+<style>
+:root {
+  --primary: #2563eb;
+  --primary-light: #dbeafe;
+  --primary-dark: #1d4ed8;
+  --bg: #f0f4f8;
+  --card: #ffffff;
+  --text: #1e293b;
+  --text-light: #64748b;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --level1: #22c55e;
+  --level2: #f59e0b;
+  --level3: #ef4444;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --radius: 12px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: "Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+button { cursor:pointer; border:none; font-family:inherit; font-size:inherit; }
+.hidden { display:none !important; }
+
+/* Header */
+.header { background:var(--primary); color:#fff; padding:12px 20px; display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,0.15); }
+.header h1 { font-size:1.2rem; flex:1; }
+.header .back-btn { background:rgba(255,255,255,0.2); color:#fff; padding:6px 14px; border-radius:8px; font-size:0.85rem; }
+.header .back-btn:hover { background:rgba(255,255,255,0.3); }
+
+/* Home */
+#home { padding:30px 20px; max-width:800px; margin:0 auto; }
+#home h2 { text-align:center; font-size:1.6rem; margin-bottom:8px; color:var(--primary); }
+#home .subtitle { text-align:center; color:var(--text-light); margin-bottom:30px; font-size:0.95rem; }
+.mode-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }
+.mode-card { background:var(--card); border-radius:var(--radius); padding:24px 20px; text-align:center; box-shadow:var(--shadow); transition:transform 0.2s,box-shadow 0.2s; border:2px solid transparent; }
+.mode-card:hover { transform:translateY(-4px); box-shadow:0 8px 24px rgba(0,0,0,0.12); border-color:var(--primary); }
+.mode-card .icon { font-size:2.5rem; margin-bottom:12px; }
+.mode-card .name { font-size:1.1rem; font-weight:bold; margin-bottom:6px; }
+.mode-card .desc { font-size:0.82rem; color:var(--text-light); }
+.progress-bar-home { margin-top:30px; background:var(--card); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); }
+.progress-bar-home h3 { margin-bottom:12px; font-size:1rem; }
+.progress-track { height:12px; background:#e2e8f0; border-radius:6px; overflow:hidden; }
+.progress-fill { height:100%; background:linear-gradient(90deg,var(--success),var(--primary)); border-radius:6px; transition:width 0.5s; }
+.progress-text { margin-top:6px; font-size:0.85rem; color:var(--text-light); }
+
+/* Filter bar */
+.filter-bar { background:var(--card); padding:12px 20px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+.filter-bar label { font-size:0.85rem; font-weight:600; color:var(--text-light); margin-right:4px; }
+.filter-bar select { padding:6px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:0.85rem; background:#fff; }
+.filter-bar .pill { padding:5px 12px; border-radius:20px; font-size:0.8rem; background:#e2e8f0; color:var(--text); transition:all 0.2s; }
+.filter-bar .pill.active { background:var(--primary); color:#fff; }
+.filter-bar .pill:hover { opacity:0.8; }
+
+/* List view */
+#list-view { padding:20px; max-width:900px; margin:0 auto; }
+.scene-section { margin-bottom:24px; }
+.scene-title { font-size:1.1rem; font-weight:bold; color:var(--primary); margin-bottom:10px; padding-bottom:6px; border-bottom:2px solid var(--primary-light); }
+.word-table { width:100%; border-collapse:collapse; background:var(--card); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); }
+.word-table th { background:var(--primary-light); padding:8px 12px; text-align:left; font-size:0.82rem; color:var(--primary-dark); }
+.word-table td { padding:8px 12px; border-bottom:1px solid #f1f5f9; font-size:0.88rem; vertical-align:top; }
+.word-table tr:last-child td { border-bottom:none; }
+.level-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.72rem; font-weight:bold; color:#fff; }
+.level-1 { background:var(--level1); }
+.level-2 { background:var(--level2); }
+.level-3 { background:var(--level3); }
+
+/* Flashcard */
+#flashcard-view { padding:20px; max-width:600px; margin:0 auto; text-align:center; }
+.card-counter { font-size:0.9rem; color:var(--text-light); margin-bottom:12px; }
+.flashcard-container { perspective:1000px; margin-bottom:20px; }
+.flashcard { width:100%; min-height:300px; position:relative; transform-style:preserve-3d; transition:transform 0.6s; cursor:pointer; }
+.flashcard.flipped { transform:rotateY(180deg); }
+.flashcard-face { position:absolute; width:100%; min-height:300px; backface-visibility:hidden; background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); display:flex; flex-direction:column; justify-content:center; align-items:center; padding:30px; }
+.flashcard-back { transform:rotateY(180deg); text-align:left; align-items:stretch; }
+.flashcard-front .word { font-size:3rem; font-weight:bold; margin-bottom:8px; }
+.flashcard-front .reading { font-size:1.2rem; color:var(--text-light); }
+.flashcard-front .hint { font-size:0.85rem; color:var(--primary); margin-top:16px; }
+.flashcard-back .meaning { font-size:1.1rem; margin-bottom:12px; padding:12px; background:var(--primary-light); border-radius:8px; }
+.flashcard-back .example { font-size:0.95rem; color:var(--text-light); margin-bottom:8px; padding:10px; border-left:3px solid var(--primary); }
+.flashcard-back .scene-tag { display:inline-block; padding:4px 10px; background:#e2e8f0; border-radius:6px; font-size:0.8rem; margin-top:8px; }
+.flashcard-actions { display:flex; gap:12px; justify-content:center; margin-bottom:16px; }
+.flashcard-actions button { padding:12px 28px; border-radius:10px; font-size:1rem; font-weight:600; }
+.btn-know { background:var(--success); color:#fff; }
+.btn-know:hover { background:#16a34a; }
+.btn-dunno { background:var(--danger); color:#fff; }
+.btn-dunno:hover { background:#dc2626; }
+.btn-shuffle { background:#e2e8f0; color:var(--text); padding:8px 16px; border-radius:8px; font-size:0.85rem; }
+
+/* Quiz */
+#quiz-view { padding:20px; max-width:700px; margin:0 auto; }
+.quiz-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.quiz-score { font-size:1rem; font-weight:600; }
+.quiz-question { background:var(--card); border-radius:var(--radius); padding:24px; box-shadow:var(--shadow); margin-bottom:16px; }
+.quiz-question .q-label { font-size:0.85rem; color:var(--primary); font-weight:600; margin-bottom:8px; }
+.quiz-question .q-text { font-size:1.15rem; line-height:1.7; }
+.quiz-options { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+.quiz-option { background:var(--card); border:2px solid #e2e8f0; border-radius:var(--radius); padding:14px 18px; font-size:1rem; text-align:left; transition:all 0.2s; }
+.quiz-option:hover:not(.disabled) { border-color:var(--primary); background:var(--primary-light); }
+.quiz-option.correct { border-color:var(--success); background:#dcfce7; }
+.quiz-option.wrong { border-color:var(--danger); background:#fef2f2; }
+.quiz-option.disabled { cursor:default; opacity:0.7; }
+.quiz-option.disabled.correct { opacity:1; }
+.quiz-next { background:var(--primary); color:#fff; padding:12px 28px; border-radius:10px; font-size:1rem; font-weight:600; }
+.quiz-next:hover { background:var(--primary-dark); }
+.quiz-mode-select { display:flex; gap:10px; margin-bottom:16px; }
+.quiz-mode-btn { padding:8px 16px; border-radius:8px; font-size:0.9rem; background:#e2e8f0; }
+.quiz-mode-btn.active { background:var(--primary); color:#fff; }
+.quiz-result { background:var(--card); border-radius:var(--radius); padding:30px; text-align:center; box-shadow:var(--shadow); }
+.quiz-result .score-big { font-size:3rem; font-weight:bold; color:var(--primary); }
+.quiz-result .score-label { font-size:1rem; color:var(--text-light); margin-bottom:16px; }
+
+/* Matching */
+#matching-view { padding:20px; max-width:900px; margin:0 auto; }
+.match-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.match-timer { font-size:1.2rem; font-weight:bold; color:var(--primary); }
+.match-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; }
+.match-card { background:var(--card); border:2px solid #e2e8f0; border-radius:var(--radius); padding:16px 12px; text-align:center; font-size:0.95rem; min-height:80px; display:flex; align-items:center; justify-content:center; transition:all 0.3s; word-break:break-all; }
+.match-card:hover:not(.matched):not(.disabled) { border-color:var(--primary); transform:scale(1.03); }
+.match-card.selected { border-color:var(--primary); background:var(--primary-light); box-shadow:0 0 0 3px rgba(37,99,235,0.2); }
+.match-card.matched { background:#dcfce7; border-color:var(--success); opacity:0.6; pointer-events:none; }
+.match-card.wrong-flash { animation:wrongShake 0.5s; border-color:var(--danger); background:#fef2f2; }
+@keyframes wrongShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+.match-complete { background:var(--card); border-radius:var(--radius); padding:30px; text-align:center; box-shadow:var(--shadow); }
+.match-complete .time-big { font-size:2.5rem; font-weight:bold; color:var(--primary); }
+
+/* Edit mode */
+#edit-view { padding:20px; max-width:900px; margin:0 auto; }
+.edit-toolbar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+.edit-toolbar button { padding:8px 16px; border-radius:8px; font-size:0.85rem; }
+.btn-add { background:var(--primary); color:#fff; }
+.btn-export { background:#e2e8f0; color:var(--text); }
+.btn-import { background:#e2e8f0; color:var(--text); }
+.btn-reset { background:var(--danger); color:#fff; }
+.edit-form { background:var(--card); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); margin-bottom:16px; }
+.edit-form h3 { margin-bottom:12px; font-size:1rem; }
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.form-group { display:flex; flex-direction:column; gap:4px; }
+.form-group.full { grid-column:1/-1; }
+.form-group label { font-size:0.82rem; font-weight:600; color:var(--text-light); }
+.form-group input, .form-group select, .form-group textarea { padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:0.9rem; font-family:inherit; }
+.form-group textarea { resize:vertical; min-height:60px; }
+.form-actions { display:flex; gap:10px; margin-top:12px; }
+.form-actions button { padding:8px 20px; border-radius:8px; font-size:0.9rem; }
+.btn-save { background:var(--primary); color:#fff; }
+.btn-cancel { background:#e2e8f0; color:var(--text); }
+.edit-list { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+.edit-item { display:flex; align-items:center; padding:10px 16px; border-bottom:1px solid #f1f5f9; gap:12px; }
+.edit-item:last-child { border-bottom:none; }
+.edit-item .word-info { flex:1; }
+.edit-item .word-name { font-weight:600; }
+.edit-item .word-meta { font-size:0.8rem; color:var(--text-light); }
+.edit-item button { padding:4px 10px; border-radius:6px; font-size:0.8rem; }
+.btn-edit-item { background:var(--primary-light); color:var(--primary); }
+.btn-delete-item { background:#fef2f2; color:var(--danger); }
+
+/* Responsive */
+@media (max-width:600px) {
+  .mode-grid { grid-template-columns:1fr 1fr; }
+  .form-grid { grid-template-columns:1fr; }
+  .match-grid { grid-template-columns:repeat(3,1fr); }
+  .flashcard-front .word { font-size:2.2rem; }
+  .filter-bar { padding:10px 12px; }
+}
+@media (max-width:400px) {
+  .mode-grid { grid-template-columns:1fr; }
+  .match-grid { grid-template-columns:repeat(2,1fr); }
+}
+
+/* Utility */
+.mt-12 { margin-top:12px; }
+.text-center { text-align:center; }
+.notification { position:fixed; top:20px; right:20px; background:var(--success); color:#fff; padding:12px 20px; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:200; animation:slideIn 0.3s; }
+.notification.error { background:var(--danger); }
+@keyframes slideIn { from{transform:translateX(100px);opacity:0} to{transform:translateX(0);opacity:1} }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <button class="back-btn hidden" id="backBtn" onclick="app.goHome()">← トップへ</button>
+  <h1 id="headerTitle">心情語マスター</h1>
+  <span id="headerBadge"></span>
+</div>
+
+<!-- Home Screen -->
+<div id="home">
+  <h2>心情語マスター</h2>
+  <p class="subtitle">物語文の読解・記述に使える心情語を楽しく学ぼう</p>
+  <div class="mode-grid">
+    <div class="mode-card" onclick="app.switchMode('list')">
+      <div class="icon">📋</div>
+      <div class="name">一覧</div>
+      <div class="desc">場面別に心情語を確認</div>
+    </div>
+    <div class="mode-card" onclick="app.switchMode('flashcard')">
+      <div class="icon">🃏</div>
+      <div class="name">フラッシュカード</div>
+      <div class="desc">カードをめくって覚えよう</div>
+    </div>
+    <div class="mode-card" onclick="app.switchMode('quiz')">
+      <div class="icon">✏️</div>
+      <div class="name">クイズ</div>
+      <div class="desc">4択問題に挑戦</div>
+    </div>
+    <div class="mode-card" onclick="app.switchMode('matching')">
+      <div class="icon">🎯</div>
+      <div class="name">マッチング</div>
+      <div class="desc">ペアを見つけてタイムアタック</div>
+    </div>
+    <div class="mode-card" onclick="app.switchMode('edit')">
+      <div class="icon">⚙️</div>
+      <div class="name">編集モード</div>
+      <div class="desc">語彙の追加・編集・管理</div>
+    </div>
+  </div>
+  <div class="progress-bar-home">
+    <h3>学習進捗</h3>
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="progress-text" id="progressText">0 / 0 語 習得済み</div>
+  </div>
+</div>
+
+<!-- Filter Bar (shared) -->
+<div class="filter-bar hidden" id="filterBar">
+  <label>場面:</label>
+  <select id="filterScene" onchange="app.applyFilter()">
+    <option value="all">すべて</option>
+  </select>
+  <label>レベル:</label>
+  <button class="pill active" data-level="all" onclick="app.setLevel('all',this)">全て</button>
+  <button class="pill" data-level="1" onclick="app.setLevel(1,this)">★</button>
+  <button class="pill" data-level="2" onclick="app.setLevel(2,this)">★★</button>
+  <button class="pill" data-level="3" onclick="app.setLevel(3,this)">★★★</button>
+</div>
+
+<!-- List View -->
+<div id="list-view" class="hidden"></div>
+
+<!-- Flashcard View -->
+<div id="flashcard-view" class="hidden">
+  <div class="card-counter" id="cardCounter">1 / 10</div>
+  <div class="flashcard-container">
+    <div class="flashcard" id="flashcard" onclick="app.flipCard()">
+      <div class="flashcard-face flashcard-front">
+        <div class="word" id="fcWord"></div>
+        <div class="reading" id="fcReading"></div>
+        <div class="hint">タップしてめくる</div>
+      </div>
+      <div class="flashcard-face flashcard-back">
+        <div class="meaning" id="fcMeaning"></div>
+        <div class="example" id="fcExample"></div>
+        <div>
+          <span class="scene-tag" id="fcScene"></span>
+          <span class="level-badge" id="fcLevel"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="flashcard-actions">
+    <button class="btn-dunno" onclick="app.fcMark(false)">まだ</button>
+    <button class="btn-know" onclick="app.fcMark(true)">覚えた！</button>
+  </div>
+  <button class="btn-shuffle" onclick="app.fcShuffle()">🔀 シャッフル</button>
+</div>
+
+<!-- Quiz View -->
+<div id="quiz-view" class="hidden">
+  <div class="quiz-mode-select">
+    <button class="quiz-mode-btn active" id="qmA" onclick="app.setQuizMode('A')">場面 → 心情語</button>
+    <button class="quiz-mode-btn" id="qmB" onclick="app.setQuizMode('B')">心情語 → 意味</button>
+  </div>
+  <div class="quiz-header">
+    <span class="quiz-score" id="quizScore">0 / 0</span>
+    <button class="btn-shuffle" onclick="app.startQuiz()">🔄 やり直す</button>
+  </div>
+  <div id="quizContent"></div>
+</div>
+
+<!-- Matching View -->
+<div id="matching-view" class="hidden">
+  <div class="match-header">
+    <span class="match-timer" id="matchTimer">00:00</span>
+    <span id="matchPairs">0 / 6</span>
+    <button class="btn-shuffle" onclick="app.startMatching()">🔄 やり直す</button>
+  </div>
+  <div class="match-grid" id="matchGrid"></div>
+  <div class="match-complete hidden" id="matchComplete">
+    <div class="time-big" id="matchFinalTime">00:00</div>
+    <p>クリア！おめでとう！</p>
+    <button class="quiz-next mt-12" onclick="app.startMatching()">もう一度</button>
+  </div>
+</div>
+
+<!-- Edit View -->
+<div id="edit-view" class="hidden">
+  <div class="edit-toolbar">
+    <button class="btn-add" onclick="app.showEditForm()">＋ 新規追加</button>
+    <button class="btn-export" onclick="app.exportData()">📥 エクスポート</button>
+    <button class="btn-import" onclick="document.getElementById('importFile').click()">📤 インポート</button>
+    <input type="file" id="importFile" accept=".json" class="hidden" onchange="app.importData(event)">
+    <button class="btn-reset" onclick="app.resetData()">🔄 初期データに戻す</button>
+  </div>
+  <div class="edit-form hidden" id="editForm">
+    <h3 id="editFormTitle">新規追加</h3>
+    <div class="form-grid">
+      <div class="form-group"><label>心情語</label><input id="efWord" placeholder="例：切ない"></div>
+      <div class="form-group"><label>読み</label><input id="efReading" placeholder="例：せつない"></div>
+      <div class="form-group full"><label>意味</label><textarea id="efMeaning" placeholder="意味の説明"></textarea></div>
+      <div class="form-group"><label>場面カテゴリ</label><select id="efScene"></select></div>
+      <div class="form-group"><label>レベル</label><select id="efLevel"><option value="1">★ 基本</option><option value="2">★★ 標準</option><option value="3">★★★ 発展</option></select></div>
+      <div class="form-group full"><label>用例文</label><textarea id="efExample" placeholder="物語文での使用例"></textarea></div>
+      <div class="form-group full"><label>関連語（カンマ区切り）</label><input id="efRelated" placeholder="例：やるせない,胸が痛む"></div>
+    </div>
+    <input type="hidden" id="efId">
+    <div class="form-actions">
+      <button class="btn-save" onclick="app.saveWord()">保存</button>
+      <button class="btn-cancel" onclick="app.hideEditForm()">キャンセル</button>
+    </div>
+  </div>
+  <div class="edit-list" id="editList"></div>
+</div>
+
+<!-- Notification -->
+<div class="notification hidden" id="notification"></div>
+
+<script>
+// ===== 心情語データ =====
+const SCENES = [
+  { id: 1, name: "喜び・感動の場面", desc: "うれしい出来事、達成、再会" },
+  { id: 2, name: "悲しみ・別れの場面", desc: "別離、喪失、孤独" },
+  { id: 3, name: "怒り・不満の場面", desc: "理不尽、裏切り、いらだち" },
+  { id: 4, name: "不安・恐れの場面", desc: "未知への恐怖、心配、緊張" },
+  { id: 5, name: "葛藤・迷いの場面", desc: "板挟み、決断、後悔" },
+  { id: 6, name: "成長・気づきの場面", desc: "変化、反省、理解" },
+  { id: 7, name: "人間関係の場面", desc: "友情、信頼、嫉妬、憧れ" },
+  { id: 8, name: "自然・情景と心情の場面", desc: "情景描写に伴う心の動き" }
+];
+
+const DEFAULT_DATA = [
+  // === 1. 喜び・感動の場面 ===
+  { id:1, word:"うれしい", reading:"うれしい", meaning:"望んでいたことが実現して、よい気持ちになること", scene:1, level:1, example:"合格の知らせを聞いて、太郎はうれしさのあまり飛び上がった。", relatedWords:["喜ぶ","幸せ"] },
+  { id:2, word:"楽しい", reading:"たのしい", meaning:"心が明るく、愉快な気持ちになること", scene:1, level:1, example:"友達と過ごす時間が楽しくて、時間がたつのを忘れた。", relatedWords:["愉快","面白い"] },
+  { id:3, word:"わくわくする", reading:"わくわくする", meaning:"期待や喜びで胸が高鳴ること", scene:1, level:1, example:"遠足の前日、わくわくして眠れなかった。", relatedWords:["どきどき","期待"] },
+  { id:4, word:"ほっとする", reading:"ほっとする", meaning:"心配や緊張が解けて安心すること", scene:1, level:1, example:"テストが終わり、ほっと肩の力が抜けた。", relatedWords:["安心","安堵"] },
+  { id:5, word:"幸せ", reading:"しあわせ", meaning:"満ち足りた穏やかな喜びを感じること", scene:1, level:1, example:"家族みんなで食卓を囲む幸せをかみしめた。", relatedWords:["幸福","満足"] },
+  { id:6, word:"感激する", reading:"かんげきする", meaning:"深く心を動かされ、強い感動を覚えること", scene:1, level:2, example:"先生の温かい言葉に感激して、涙がこぼれた。", relatedWords:["感動","胸を打たれる"] },
+  { id:7, word:"誇らしい", reading:"ほこらしい", meaning:"自分や仲間のことを立派に思い、胸を張る気持ち", scene:1, level:2, example:"弟の活躍を見て、姉は誇らしい気持ちになった。", relatedWords:["得意","自慢"] },
+  { id:8, word:"胸が躍る", reading:"むねがおどる", meaning:"期待や喜びで心が弾み、高揚すること", scene:1, level:2, example:"夢だった舞台に立てると聞き、胸が躍った。", relatedWords:["心が弾む","わくわく"] },
+  { id:9, word:"心が弾む", reading:"こころがはずむ", meaning:"うれしくて、うきうきした気持ちになること", scene:1, level:2, example:"久しぶりの再会に、心が弾んだ。", relatedWords:["胸が躍る","うきうき"] },
+  { id:10, word:"満ち足りた", reading:"みちたりた", meaning:"十分に満足して、何も不足がない気持ち", scene:1, level:2, example:"穏やかな夕暮れの中、満ち足りた気持ちで空を見上げた。", relatedWords:["充実","満足"] },
+  { id:11, word:"歓喜", reading:"かんき", meaning:"この上なく大きな喜び。心の底からわきあがる喜び", scene:1, level:3, example:"優勝が決まった瞬間、チームは歓喜に沸いた。", relatedWords:["大喜び","狂喜"] },
+  { id:12, word:"感無量", reading:"かんむりょう", meaning:"感動が深すぎて言葉にできないこと", scene:1, level:3, example:"卒業式で恩師の姿を見て、感無量の面持ちだった。", relatedWords:["感慨深い","万感"] },
+  { id:13, word:"高揚する", reading:"こうようする", meaning:"気持ちが高まり、テンションが上がること", scene:1, level:3, example:"応援の声に気持ちが高揚し、力が湧いてきた。", relatedWords:["興奮","昂ぶる"] },
+  { id:14, word:"充実感", reading:"じゅうじつかん", meaning:"やるべきことをやり遂げた後の満たされた気持ち", scene:1, level:3, example:"練習を重ねた日々を振り返り、充実感に包まれた。", relatedWords:["達成感","満足感"] },
+  { id:15, word:"達成感", reading:"たっせいかん", meaning:"目標を成し遂げたときに感じる深い満足感", scene:1, level:3, example:"長い努力の末に完成した作品に、達成感を覚えた。", relatedWords:["充実感","やりきった"] },
+
+  // === 2. 悲しみ・別れの場面 ===
+  { id:16, word:"悲しい", reading:"かなしい", meaning:"つらい出来事に心が痛み、涙が出そうになること", scene:2, level:1, example:"大好きだった犬が死んでしまい、悲しくてたまらなかった。", relatedWords:["つらい","せつない"] },
+  { id:17, word:"さびしい", reading:"さびしい", meaning:"ひとりぼっちで心に穴が開いたような気持ち", scene:2, level:1, example:"転校した友達のことを思い出すと、さびしさがこみ上げた。", relatedWords:["孤独","心細い"] },
+  { id:18, word:"つらい", reading:"つらい", meaning:"心や体が苦しくて耐えがたいこと", scene:2, level:1, example:"誰にもわかってもらえないことが、何よりつらかった。", relatedWords:["苦しい","やるせない"] },
+  { id:19, word:"がっかりする", reading:"がっかりする", meaning:"期待はずれで気持ちが沈むこと", scene:2, level:1, example:"楽しみにしていた遠足が中止になり、がっかりした。", relatedWords:["落胆","しょんぼり"] },
+  { id:20, word:"心細い", reading:"こころぼそい", meaning:"頼るものがなく、不安で寂しいこと", scene:2, level:1, example:"初めて一人で電車に乗ったとき、心細さを感じた。", relatedWords:["不安","さびしい"] },
+  { id:21, word:"切ない", reading:"せつない", meaning:"悲しさとやるせなさが胸にしみて苦しいこと", scene:2, level:2, example:"もう会えないと知ったとき、切なさが胸を締めつけた。", relatedWords:["やるせない","胸が痛む"] },
+  { id:22, word:"胸が痛む", reading:"むねがいたむ", meaning:"悲しみや同情で心が苦しくなること", scene:2, level:2, example:"友達の涙を見て、胸が痛んだ。", relatedWords:["心が痛む","切ない"] },
+  { id:23, word:"やるせない", reading:"やるせない", meaning:"どうしようもなく悲しく、行き場のない気持ち", scene:2, level:2, example:"努力が報われなかったやるせなさに、肩を落とした。", relatedWords:["切ない","むなしい"] },
+  { id:24, word:"心が沈む", reading:"こころがしずむ", meaning:"気分が落ち込み、暗い気持ちになること", scene:2, level:2, example:"雨の日の帰り道、ひとりで歩くと心が沈んだ。", relatedWords:["気が滅入る","落ち込む"] },
+  { id:25, word:"未練", reading:"みれん", meaning:"あきらめきれず、心が残ること", scene:2, level:2, example:"引っ越す日、この町への未練が胸に残った。", relatedWords:["名残惜しい","心残り"] },
+  { id:26, word:"喪失感", reading:"そうしつかん", meaning:"大切なものを失った後の空虚で力の抜ける気持ち", scene:2, level:3, example:"親友が転校した後、大きな喪失感に包まれた。", relatedWords:["虚脱感","空虚"] },
+  { id:27, word:"惜別", reading:"せきべつ", meaning:"別れを惜しみ、名残を惜しむ気持ち", scene:2, level:3, example:"卒業式の日、惜別の涙を流した。", relatedWords:["名残惜しい","別れを惜しむ"] },
+  { id:28, word:"哀惜", reading:"あいせき", meaning:"悲しみながら惜しむ気持ち", scene:2, level:3, example:"恩師の訃報に接し、哀惜の念を抱いた。", relatedWords:["惜別","追慕"] },
+  { id:29, word:"虚脱感", reading:"きょだつかん", meaning:"力が抜けて何もする気が起きない空っぽの状態", scene:2, level:3, example:"大会が終わった後、しばらく虚脱感に襲われた。", relatedWords:["喪失感","脱力"] },
+  { id:30, word:"感傷的", reading:"かんしょうてき", meaning:"ささいなことにも悲しさを感じやすい状態", scene:2, level:3, example:"秋の夕暮れに、感傷的な気分になった。", relatedWords:["センチメンタル","もの悲しい"] },
+
+  // === 3. 怒り・不満の場面 ===
+  { id:31, word:"腹が立つ", reading:"はらがたつ", meaning:"不満や怒りを感じ、いらいらすること", scene:3, level:1, example:"約束を破られて、腹が立った。", relatedWords:["怒る","むかつく"] },
+  { id:32, word:"悔しい", reading:"くやしい", meaning:"負けたり失敗して、残念で腹立たしいこと", scene:3, level:1, example:"あと一点で負けてしまい、悔しさで拳を握りしめた。", relatedWords:["無念","残念"] },
+  { id:33, word:"いらいらする", reading:"いらいらする", meaning:"思い通りにならず、気持ちが落ち着かないこと", scene:3, level:1, example:"何度やってもうまくいかず、いらいらした。", relatedWords:["じれったい","もどかしい"] },
+  { id:34, word:"むかつく", reading:"むかつく", meaning:"強い不快感や怒りが胸にこみ上げること", scene:3, level:1, example:"陰口を言われていると知り、むかついた。", relatedWords:["腹が立つ","頭に来る"] },
+  { id:35, word:"許せない", reading:"ゆるせない", meaning:"相手の行いが受け入れられず、怒りを覚えること", scene:3, level:1, example:"弱い者いじめをする態度が許せなかった。", relatedWords:["腹が立つ","憤る"] },
+  { id:36, word:"憤る", reading:"いきどおる", meaning:"不正や理不尽なことに対して強く怒ること", scene:3, level:2, example:"友達が不当な扱いを受けたことに憤った。", relatedWords:["憤慨","義憤"] },
+  { id:37, word:"やりきれない", reading:"やりきれない", meaning:"あまりのひどさに我慢できず、やりどころのない気持ち", scene:3, level:2, example:"何の罪もない人が傷つけられるのを見て、やりきれなかった。", relatedWords:["やるせない","たまらない"] },
+  { id:38, word:"歯がゆい", reading:"はがゆい", meaning:"思い通りにならずもどかしく、じれったいこと", scene:3, level:2, example:"助けたいのに何もできない自分が歯がゆかった。", relatedWords:["もどかしい","じれったい"] },
+  { id:39, word:"憤慨する", reading:"ふんがいする", meaning:"不正や理不尽に対して怒りをあらわにすること", scene:3, level:2, example:"ルール違反をしても平気な態度に憤慨した。", relatedWords:["憤る","激怒"] },
+  { id:40, word:"もどかしい", reading:"もどかしい", meaning:"思うようにならず、じれったい気持ち", scene:3, level:2, example:"言いたいことがうまく伝わらず、もどかしかった。", relatedWords:["歯がゆい","いらだつ"] },
+  { id:41, word:"義憤", reading:"ぎふん", meaning:"正義のために怒ること。不正を許せない怒り", scene:3, level:3, example:"弱い立場の人が虐げられるのを見て、義憤にかられた。", relatedWords:["憤り","正義感"] },
+  { id:42, word:"激昂する", reading:"げきこうする", meaning:"怒りが爆発して激しく興奮すること", scene:3, level:3, example:"あまりの仕打ちに激昂し、声を荒らげた。", relatedWords:["激怒","逆上"] },
+  { id:43, word:"憤り", reading:"いきどおり", meaning:"心の底からわきあがる強い怒りの気持ち", scene:3, level:3, example:"不公平な判定への憤りを抑えきれなかった。", relatedWords:["怒り","義憤"] },
+  { id:44, word:"遺憾", reading:"いかん", meaning:"期待通りにならず、残念に思うこと", scene:3, level:3, example:"信頼していた人の裏切りを遺憾に思った。", relatedWords:["残念","無念"] },
+  { id:45, word:"忍びない", reading:"しのびない", meaning:"かわいそうで見ていられない、我慢できない気持ち", scene:3, level:3, example:"一人で泣いている姿を見ると忍びなかった。", relatedWords:["いたたまれない","気の毒"] },
+
+  // === 4. 不安・恐れの場面 ===
+  { id:46, word:"不安", reading:"ふあん", meaning:"これからどうなるか心配で落ち着かないこと", scene:4, level:1, example:"明日の発表のことを思うと、不安で胸がいっぱいになった。", relatedWords:["心配","恐れ"] },
+  { id:47, word:"こわい", reading:"こわい", meaning:"危険を感じて身がすくむこと", scene:4, level:1, example:"暗い夜道をひとりで歩くのはこわかった。", relatedWords:["恐ろしい","おそろしい"] },
+  { id:48, word:"心配", reading:"しんぱい", meaning:"悪いことが起きるのではないかと気がかりなこと", scene:4, level:1, example:"帰りの遅い母を心配して、何度も時計を見た。", relatedWords:["不安","気がかり"] },
+  { id:49, word:"びくびくする", reading:"びくびくする", meaning:"何かを恐れて、おどおどすること", scene:4, level:1, example:"先生に叱られるのではと、びくびくしていた。", relatedWords:["おどおど","怯える"] },
+  { id:50, word:"おびえる", reading:"おびえる", meaning:"恐怖で体がこわばり、心が縮むこと", scene:4, level:1, example:"雷の音におびえて、布団にもぐりこんだ。", relatedWords:["怯える","恐れる"] },
+  { id:51, word:"動揺する", reading:"どうようする", meaning:"予想外のことに心が揺れ、落ち着きを失うこと", scene:4, level:2, example:"突然の知らせに動揺し、言葉が出なかった。", relatedWords:["うろたえる","取り乱す"] },
+  { id:52, word:"胸騒ぎ", reading:"むなさわぎ", meaning:"何か悪いことが起きそうな不吉な予感", scene:4, level:2, example:"朝から胸騒ぎがして、一日落ち着かなかった。", relatedWords:["嫌な予感","虫の知らせ"] },
+  { id:53, word:"たじろぐ", reading:"たじろぐ", meaning:"相手の勢いや雰囲気に気おされ、一歩引くこと", scene:4, level:2, example:"厳しい目で見つめられ、思わずたじろいだ。", relatedWords:["ひるむ","気おくれ"] },
+  { id:54, word:"緊張する", reading:"きんちょうする", meaning:"体も心もピンと張り詰め、力が入ること", scene:4, level:2, example:"大勢の前でのスピーチに緊張し、手が震えた。", relatedWords:["張り詰める","硬くなる"] },
+  { id:55, word:"怯える", reading:"おびえる", meaning:"恐怖に心が支配され、身が縮こまること", scene:4, level:2, example:"見知らぬ大人の怒鳴り声に怯えた。", relatedWords:["おびえる","恐れる"] },
+  { id:56, word:"恐怖", reading:"きょうふ", meaning:"身がすくむほどの強い怖さ。逃げ出したくなる気持ち", scene:4, level:3, example:"暗闇の中で物音がして、恐怖に体が固まった。", relatedWords:["恐れ","戦慄"] },
+  { id:57, word:"戦慄する", reading:"せんりつする", meaning:"恐ろしさのあまり身体が震えること", scene:4, level:3, example:"その光景に戦慄し、声も出せなかった。", relatedWords:["身震い","恐怖"] },
+  { id:58, word:"狼狽する", reading:"ろうばいする", meaning:"あわてふためき、どうしてよいかわからなくなること", scene:4, level:3, example:"予想外の事態に狼狽し、足がもつれた。", relatedWords:["うろたえる","取り乱す"] },
+  { id:59, word:"危惧する", reading:"きぐする", meaning:"悪い結果になりはしないかと心配すること", scene:4, level:3, example:"友達の様子がおかしく、何かあったのではと危惧した。", relatedWords:["懸念","心配"] },
+  { id:60, word:"畏怖", reading:"いふ", meaning:"偉大なものへの恐れとうやまいが入り混じった気持ち", scene:4, level:3, example:"大自然の力を前に、畏怖の念を抱いた。", relatedWords:["畏敬","恐れ"] },
+
+  // === 5. 葛藤・迷いの場面 ===
+  { id:61, word:"迷う", reading:"まよう", meaning:"どうすればよいか決められず、心が揺れること", scene:5, level:1, example:"正直に話すべきか黙っているべきか、迷った。", relatedWords:["悩む","ためらう"] },
+  { id:62, word:"困る", reading:"こまる", meaning:"どう対処してよいかわからず、途方にくれること", scene:5, level:1, example:"道に迷ってしまい、困り果てた。", relatedWords:["途方にくれる","当惑"] },
+  { id:63, word:"後悔する", reading:"こうかいする", meaning:"あのときこうすればよかったと悔やむこと", scene:5, level:1, example:"あのとき声をかけなかったことを後悔した。", relatedWords:["悔やむ","反省"] },
+  { id:64, word:"気まずい", reading:"きまずい", meaning:"その場の雰囲気が悪く、居心地が悪いこと", scene:5, level:1, example:"けんかした後の教室は気まずい空気が流れていた。", relatedWords:["居心地が悪い","ばつが悪い"] },
+  { id:65, word:"もやもやする", reading:"もやもやする", meaning:"すっきりしない気持ちが胸に残ること", scene:5, level:1, example:"何かが引っかかって、ずっともやもやしていた。", relatedWords:["すっきりしない","ひっかかる"] },
+  { id:66, word:"葛藤する", reading:"かっとうする", meaning:"二つの思いの間で心が引き裂かれること", scene:5, level:2, example:"友達をかばうか、本当のことを言うか、葛藤した。", relatedWords:["板挟み","ジレンマ"] },
+  { id:67, word:"ためらう", reading:"ためらう", meaning:"決断できずに立ち止まり、踏み出せないこと", scene:5, level:2, example:"声をかけようとしたが、ためらって足が止まった。", relatedWords:["躊躇","迷う"] },
+  { id:68, word:"板挟み", reading:"いたばさみ", meaning:"両方の間に挟まれて、どちらにもつけない状態", scene:5, level:2, example:"二人の友達の間で板挟みになり、苦しかった。", relatedWords:["葛藤","ジレンマ"] },
+  { id:69, word:"思い悩む", reading:"おもいなやむ", meaning:"深く考え込んで苦しみ、答えが出ないこと", scene:5, level:2, example:"進路のことを思い悩み、夜も眠れなかった。", relatedWords:["悩む","思い詰める"] },
+  { id:70, word:"躊躇する", reading:"ちゅうちょする", meaning:"やるかやめるか決められず、ぐずぐずすること", scene:5, level:2, example:"手を挙げようとしたが躊躇してしまった。", relatedWords:["ためらう","迷う"] },
+  { id:71, word:"逡巡する", reading:"しゅんじゅんする", meaning:"決心がつかず、あれこれ迷い続けること", scene:5, level:3, example:"扉の前で逡巡したが、ついに決意して中に入った。", relatedWords:["ためらう","躊躇"] },
+  { id:72, word:"煩悶する", reading:"はんもんする", meaning:"悩み苦しんで心が乱れ、苦しむこと", scene:5, level:3, example:"自分の弱さに煩悶し、一人で部屋にこもった。", relatedWords:["悶々","苦悩"] },
+  { id:73, word:"自責の念", reading:"じせきのねん", meaning:"自分を責める気持ち。自分のせいだと悔やむこと", scene:5, level:3, example:"あのとき止めていればと、自責の念にかられた。", relatedWords:["後悔","自分を責める"] },
+  { id:74, word:"ジレンマ", reading:"じれんま", meaning:"どちらを選んでも問題がある、二者択一の苦しい状態", scene:5, level:3, example:"正直に言えば友を傷つけ、黙れば嘘になるジレンマに苦しんだ。", relatedWords:["板挟み","葛藤"] },
+  { id:75, word:"忸怩たる", reading:"じくじたる", meaning:"自分が恥ずかしく、情けないと深く感じること", scene:5, level:3, example:"逃げ出した自分に対して、忸怩たる思いを抱いた。", relatedWords:["恥ずかしい","情けない"] },
+
+  // === 6. 成長・気づきの場面 ===
+  { id:76, word:"気づく", reading:"きづく", meaning:"今まで見えていなかったことが、はっとわかること", scene:6, level:1, example:"母がいつも自分のために早起きしていたことに気づいた。", relatedWords:["わかる","悟る"] },
+  { id:77, word:"反省する", reading:"はんせいする", meaning:"自分の行いを振り返り、改めようと思うこと", scene:6, level:1, example:"友達に言いすぎたことを反省した。", relatedWords:["悔い改める","省みる"] },
+  { id:78, word:"決心する", reading:"けっしんする", meaning:"こうしようと心をかたく決めること", scene:6, level:1, example:"もう逃げないと決心し、前を向いた。", relatedWords:["決意","覚悟"] },
+  { id:79, word:"成長する", reading:"せいちょうする", meaning:"経験を通じて、前の自分より一段階進むこと", scene:6, level:1, example:"この出来事を通じて、太郎は少し成長した。", relatedWords:["変わる","進歩"] },
+  { id:80, word:"見直す", reading:"みなおす", meaning:"相手への評価がよい方向に変わること", scene:6, level:1, example:"彼の勇気ある行動を見て、見直した。", relatedWords:["評価が変わる","認める"] },
+  { id:81, word:"悟る", reading:"さとる", meaning:"物事の本質や真実に深く気づくこと", scene:6, level:2, example:"人の痛みは経験しないとわからないと悟った。", relatedWords:["気づく","理解する"] },
+  { id:82, word:"自覚する", reading:"じかくする", meaning:"自分の立場や役割をはっきり認識すること", scene:6, level:2, example:"チームの一員としての責任を自覚した。", relatedWords:["認識する","意識する"] },
+  { id:83, word:"奮い立つ", reading:"ふるいたつ", meaning:"気持ちを奮い起こし、頑張ろうとすること", scene:6, level:2, example:"仲間の声援を聞いて、奮い立った。", relatedWords:["奮起","発奮"] },
+  { id:84, word:"覚悟する", reading:"かくごする", meaning:"困難や結果を受け入れる強い決意をすること", scene:6, level:2, example:"厳しい練習に耐える覚悟を決めた。", relatedWords:["決心","決意"] },
+  { id:85, word:"改心する", reading:"かいしんする", meaning:"自分の過ちを認め、心を入れ替えること", scene:6, level:2, example:"いじめていたことを恥じ、改心した。", relatedWords:["心を入れ替える","反省"] },
+  { id:86, word:"開眼する", reading:"かいがんする", meaning:"目が開かれたように真実や大切なことに気づくこと", scene:6, level:3, example:"師匠の一言で、ものの見方が変わり開眼した。", relatedWords:["目が覚める","悟る"] },
+  { id:87, word:"克己", reading:"こっき", meaning:"自分の弱さや欲望に打ち勝つこと", scene:6, level:3, example:"苦しい場面でも克己の精神で乗り越えた。", relatedWords:["自制","忍耐"] },
+  { id:88, word:"感慨深い", reading:"かんがいぶかい", meaning:"過去を振り返り、しみじみと深く感じ入ること", scene:6, level:3, example:"六年間を振り返ると、感慨深いものがあった。", relatedWords:["感無量","しみじみ"] },
+  { id:89, word:"発奮する", reading:"はっぷんする", meaning:"刺激を受けて気持ちを奮い立たせること", scene:6, level:3, example:"ライバルの活躍に発奮し、自分も練習に打ち込んだ。", relatedWords:["奮起","一念発起"] },
+  { id:90, word:"矜持", reading:"きょうじ", meaning:"自分の能力や信念に対する誇りと自負", scene:6, level:3, example:"どんな困難にも屈しない矜持を持ち続けた。", relatedWords:["誇り","プライド"] },
+
+  // === 7. 人間関係の場面 ===
+  { id:91, word:"憧れる", reading:"あこがれる", meaning:"すばらしいと思い、自分もそうなりたいと願うこと", scene:7, level:1, example:"堂々とスピーチする先輩に憧れた。", relatedWords:["尊敬","敬慕"] },
+  { id:92, word:"信じる", reading:"しんじる", meaning:"相手を疑わず、頼りにすること", scene:7, level:1, example:"どんなときも友達を信じ続けた。", relatedWords:["信頼","信用"] },
+  { id:93, word:"うらやましい", reading:"うらやましい", meaning:"他人の良い面を見て、自分もそうなりたいと思うこと", scene:7, level:1, example:"何でもできる友達がうらやましかった。", relatedWords:["ねたましい","羨望"] },
+  { id:94, word:"親しみ", reading:"したしみ", meaning:"相手に対して温かく、近しく感じる気持ち", scene:7, level:1, example:"話すうちに、彼に親しみを感じるようになった。", relatedWords:["好感","仲良し"] },
+  { id:95, word:"申し訳ない", reading:"もうしわけない", meaning:"相手に対して悪いことをしたと、すまなく思うこと", scene:7, level:1, example:"迷惑をかけてしまい、申し訳ない気持ちでいっぱいだった。", relatedWords:["すまない","後ろめたい"] },
+  { id:96, word:"尊敬する", reading:"そんけいする", meaning:"相手の人柄や行いを心から立派だと思うこと", scene:7, level:2, example:"困難に負けない父の姿を尊敬していた。", relatedWords:["敬う","憧れる"] },
+  { id:97, word:"嫉妬する", reading:"しっとする", meaning:"他人が自分より優れていることをねたむこと", scene:7, level:2, example:"いつも一番の友達に、心のどこかで嫉妬していた。", relatedWords:["ねたむ","やきもち"] },
+  { id:98, word:"共感する", reading:"きょうかんする", meaning:"相手の気持ちに寄り添い、同じように感じること", scene:7, level:2, example:"主人公の苦しみに共感し、涙があふれた。", relatedWords:["同情","理解する"] },
+  { id:99, word:"疎外感", reading:"そがいかん", meaning:"自分だけが仲間はずれにされているような孤独な気持ち", scene:7, level:2, example:"みんなが楽しそうに話す中、疎外感を覚えた。", relatedWords:["孤独","仲間はずれ"] },
+  { id:100, word:"心を許す", reading:"こころをゆるす", meaning:"警戒を解き、相手を信頼して本音を見せること", scene:7, level:2, example:"最初は警戒していたが、次第に心を許すようになった。", relatedWords:["打ち解ける","信頼"] },
+  { id:101, word:"敬慕する", reading:"けいぼする", meaning:"深く尊敬し、慕い続けること", scene:7, level:3, example:"先生を敬慕し、その教えを胸に刻んだ。", relatedWords:["尊敬","慕う"] },
+  { id:102, word:"羨望", reading:"せんぼう", meaning:"他人の幸福や才能を強くうらやむ気持ち", scene:7, level:3, example:"自由に夢を追える友人に羨望のまなざしを向けた。", relatedWords:["うらやましい","嫉妬"] },
+  { id:103, word:"確執", reading:"かくしつ", meaning:"互いに譲らず、対立が続くこと", scene:7, level:3, example:"二人の間には深い確執があった。", relatedWords:["対立","いさかい"] },
+  { id:104, word:"畏敬の念", reading:"いけいのねん", meaning:"偉大なものに対する尊敬と畏れの入り混じった気持ち", scene:7, level:3, example:"命がけで人を助けた人に、畏敬の念を抱いた。", relatedWords:["尊敬","畏怖"] },
+  { id:105, word:"連帯感", reading:"れんたいかん", meaning:"仲間と心がつながり、一体になっている感覚", scene:7, level:3, example:"同じ目標に向かう仲間との連帯感が力になった。", relatedWords:["一体感","絆"] },
+
+  // === 8. 自然・情景と心情の場面 ===
+  { id:106, word:"さわやか", reading:"さわやか", meaning:"すがすがしく気持ちがよいこと", scene:8, level:1, example:"朝の風がさわやかで、心が晴れた。", relatedWords:["すがすがしい","清々しい"] },
+  { id:107, word:"穏やか", reading:"おだやか", meaning:"静かで落ち着いた、平和な気持ち", scene:8, level:1, example:"波の音を聞きながら、穏やかな気持ちになった。", relatedWords:["安らか","静か"] },
+  { id:108, word:"しみじみ", reading:"しみじみ", meaning:"心の奥まで深くしんみりと感じること", scene:8, level:1, example:"秋の夕焼けを見て、しみじみと一年を振り返った。", relatedWords:["感慨深い","しんみり"] },
+  { id:109, word:"のどか", reading:"のどか", meaning:"ゆったりとして平和なこと。のんびりした雰囲気", scene:8, level:1, example:"のどかな田園風景が、疲れた心を癒やした。", relatedWords:["のんびり","平和"] },
+  { id:110, word:"すがすがしい", reading:"すがすがしい", meaning:"さっぱりとして、心も体も軽くなること", scene:8, level:1, example:"雨上がりの空気がすがすがしく、深呼吸した。", relatedWords:["さわやか","清々しい"] },
+  { id:111, word:"郷愁", reading:"きょうしゅう", meaning:"故郷や過ぎた日々を懐かしく思い、胸が締まる気持ち", scene:8, level:2, example:"夕焼けの景色が郷愁を誘い、ふるさとを思い出した。", relatedWords:["懐かしい","ノスタルジー"] },
+  { id:112, word:"もの悲しい", reading:"ものがなしい", meaning:"はっきりした理由もなく、なんとなく悲しいこと", scene:8, level:2, example:"秋の風にもの悲しさを感じた。", relatedWords:["感傷的","哀愁"] },
+  { id:113, word:"余韻", reading:"よいん", meaning:"出来事が終わった後にも残る、しみじみとした感慨", scene:8, level:2, example:"演奏が終わった後も、しばらく余韻に浸っていた。", relatedWords:["名残","後味"] },
+  { id:114, word:"寂しさ", reading:"さびしさ", meaning:"静かで人気がなく、心にぽっかり穴が開いた気持ち", scene:8, level:2, example:"祭りの後の静けさに、寂しさを覚えた。", relatedWords:["さびしい","孤独"] },
+  { id:115, word:"荘厳", reading:"そうごん", meaning:"おごそかで、心が引き締まるような重々しさ", scene:8, level:2, example:"朝日に照らされた山々は荘厳で、言葉を失った。", relatedWords:["おごそか","崇高"] },
+  { id:116, word:"哀愁", reading:"あいしゅう", meaning:"悲しみと寂しさが静かに漂うしっとりとした趣", scene:8, level:3, example:"夕暮れの港に哀愁が漂っていた。", relatedWords:["もの悲しい","感傷"] },
+  { id:117, word:"寂寥感", reading:"せきりょうかん", meaning:"もの寂しく、心が空虚に感じる深い寂しさ", scene:8, level:3, example:"誰もいない校庭に寂寥感が広がっていた。", relatedWords:["孤独","虚しさ"] },
+  { id:118, word:"情緒", reading:"じょうちょ", meaning:"風景や出来事から感じる細やかな味わいや雰囲気", scene:8, level:3, example:"古い街並みには独特の情緒があった。", relatedWords:["風情","趣"] },
+  { id:119, word:"幽玄", reading:"ゆうげん", meaning:"奥深く、言葉では表しきれない神秘的な美しさ", scene:8, level:3, example:"霧に包まれた森は幽玄な雰囲気をたたえていた。", relatedWords:["神秘的","奥深い"] },
+  { id:120, word:"感傷に浸る", reading:"かんしょうにひたる", meaning:"悲しみや懐かしさに身を任せ、しみじみとすること", scene:8, level:3, example:"古い写真を見ながら、感傷に浸った。", relatedWords:["感傷的","しみじみ"] }
+];
+
+// ===== アプリケーション =====
+const app = {
+  currentMode: 'home',
+  filteredData: [],
+  filterLevel: 'all',
+  filterScene: 'all',
+  data: [],
+  // Flashcard state
+  fcCards: [], fcIndex: 0, fcKnown: new Set(),
+  // Quiz state
+  quizMode: 'A', quizQuestions: [], quizIndex: 0, quizCorrect: 0, quizAnswered: false,
+  // Matching state
+  matchCards: [], matchSelected: null, matchPairs: 0, matchTotal: 0, matchTimer: null, matchSeconds: 0,
+
+  init() {
+    const saved = localStorage.getItem('shinjo-custom-data');
+    this.data = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_DATA));
+    this.loadProgress();
+    this.populateFilters();
+    this.updateProgress();
+  },
+
+  populateFilters() {
+    const sel = document.getElementById('filterScene');
+    sel.innerHTML = '<option value="all">すべて</option>';
+    SCENES.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = s.name;
+      sel.appendChild(opt);
+    });
+    const efSel = document.getElementById('efScene');
+    efSel.innerHTML = '';
+    SCENES.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = s.name;
+      efSel.appendChild(opt);
+    });
+  },
+
+  getFiltered() {
+    let d = [...this.data];
+    if (this.filterScene !== 'all') d = d.filter(w => w.scene == this.filterScene);
+    if (this.filterLevel !== 'all') d = d.filter(w => w.level == this.filterLevel);
+    return d;
+  },
+
+  applyFilter() {
+    this.filterScene = document.getElementById('filterScene').value;
+    if (this.currentMode === 'list') this.renderList();
+    else if (this.currentMode === 'flashcard') this.startFlashcards();
+    else if (this.currentMode === 'quiz') this.startQuiz();
+    else if (this.currentMode === 'matching') this.startMatching();
+    else if (this.currentMode === 'edit') this.renderEditList();
+  },
+
+  setLevel(lv, btn) {
+    this.filterLevel = lv;
+    document.querySelectorAll('.filter-bar .pill').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    this.applyFilter();
+  },
+
+  switchMode(mode) {
+    this.currentMode = mode;
+    document.getElementById('home').classList.add('hidden');
+    document.getElementById('filterBar').classList.toggle('hidden', mode === 'edit');
+    document.getElementById('list-view').classList.add('hidden');
+    document.getElementById('flashcard-view').classList.add('hidden');
+    document.getElementById('quiz-view').classList.add('hidden');
+    document.getElementById('matching-view').classList.add('hidden');
+    document.getElementById('edit-view').classList.add('hidden');
+    document.getElementById('backBtn').classList.remove('hidden');
+
+    const titles = { list:'一覧', flashcard:'フラッシュカード', quiz:'クイズ', matching:'マッチング', edit:'編集モード' };
+    document.getElementById('headerTitle').textContent = titles[mode] || '心情語マスター';
+
+    if (mode === 'list') { document.getElementById('list-view').classList.remove('hidden'); this.renderList(); }
+    else if (mode === 'flashcard') { document.getElementById('flashcard-view').classList.remove('hidden'); this.startFlashcards(); }
+    else if (mode === 'quiz') { document.getElementById('quiz-view').classList.remove('hidden'); this.startQuiz(); }
+    else if (mode === 'matching') { document.getElementById('matching-view').classList.remove('hidden'); this.startMatching(); }
+    else if (mode === 'edit') { document.getElementById('edit-view').classList.remove('hidden'); this.renderEditList(); }
+  },
+
+  goHome() {
+    this.currentMode = 'home';
+    if (this.matchTimer) { clearInterval(this.matchTimer); this.matchTimer = null; }
+    document.getElementById('home').classList.remove('hidden');
+    document.getElementById('filterBar').classList.add('hidden');
+    document.getElementById('list-view').classList.add('hidden');
+    document.getElementById('flashcard-view').classList.add('hidden');
+    document.getElementById('quiz-view').classList.add('hidden');
+    document.getElementById('matching-view').classList.add('hidden');
+    document.getElementById('edit-view').classList.add('hidden');
+    document.getElementById('backBtn').classList.add('hidden');
+    document.getElementById('headerTitle').textContent = '心情語マスター';
+    this.updateProgress();
+  },
+
+  // === List ===
+  renderList() {
+    const container = document.getElementById('list-view');
+    const data = this.getFiltered();
+    const grouped = {};
+    data.forEach(w => {
+      const s = SCENES.find(s => s.id === w.scene);
+      const key = s ? s.name : '不明';
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(w);
+    });
+    let html = '';
+    for (const [scene, words] of Object.entries(grouped)) {
+      words.sort((a,b) => a.level - b.level);
+      html += `<div class="scene-section"><div class="scene-title">${scene}</div>`;
+      html += '<table class="word-table"><thead><tr><th>レベル</th><th>心情語</th><th>読み</th><th>意味</th><th>用例</th></tr></thead><tbody>';
+      words.forEach(w => {
+        const stars = '★'.repeat(w.level);
+        html += `<tr><td><span class="level-badge level-${w.level}">${stars}</span></td><td><strong>${w.word}</strong></td><td>${w.reading}</td><td>${w.meaning}</td><td style="font-size:0.82rem;color:var(--text-light)">${w.example}</td></tr>`;
+      });
+      html += '</tbody></table></div>';
+    }
+    if (!data.length) html = '<p class="text-center" style="padding:40px;color:var(--text-light)">該当する心情語がありません</p>';
+    container.innerHTML = html;
+  },
+
+  // === Flashcard ===
+  startFlashcards() {
+    this.fcCards = this.shuffle([...this.getFiltered()]);
+    this.fcIndex = 0;
+    this.fcKnown = new Set();
+    if (!this.fcCards.length) { document.getElementById('flashcard-view').innerHTML = '<p class="text-center" style="padding:40px">該当する心情語がありません</p>'; return; }
+    this.renderFlashcard();
+  },
+
+  renderFlashcard() {
+    if (this.fcIndex >= this.fcCards.length) {
+      const total = this.fcCards.length;
+      const known = this.fcKnown.size;
+      document.getElementById('flashcard-view').querySelector('.flashcard-container').innerHTML =
+        `<div style="text-align:center;padding:40px"><div style="font-size:2rem;font-weight:bold;color:var(--primary)">${known} / ${total}</div><p>覚えた語数</p><button class="quiz-next mt-12" onclick="app.startFlashcards()">もう一度</button></div>`;
+      return;
+    }
+    const w = this.fcCards[this.fcIndex];
+    document.getElementById('cardCounter').textContent = `${this.fcIndex+1} / ${this.fcCards.length}`;
+    document.getElementById('fcWord').textContent = w.word;
+    document.getElementById('fcReading').textContent = w.reading;
+    document.getElementById('fcMeaning').textContent = w.meaning;
+    document.getElementById('fcExample').textContent = `「${w.example}」`;
+    const s = SCENES.find(s => s.id === w.scene);
+    document.getElementById('fcScene').textContent = s ? s.name : '';
+    document.getElementById('fcLevel').textContent = '★'.repeat(w.level);
+    document.getElementById('fcLevel').className = `level-badge level-${w.level}`;
+    document.getElementById('flashcard').classList.remove('flipped');
+  },
+
+  flipCard() { document.getElementById('flashcard').classList.toggle('flipped'); },
+
+  fcMark(known) {
+    if (known) {
+      this.fcKnown.add(this.fcCards[this.fcIndex].id);
+      this.markLearned(this.fcCards[this.fcIndex].id);
+    }
+    this.fcIndex++;
+    this.renderFlashcard();
+  },
+
+  fcShuffle() {
+    this.fcCards = this.shuffle(this.fcCards);
+    this.fcIndex = 0;
+    this.renderFlashcard();
+  },
+
+  // === Quiz ===
+  setQuizMode(mode) {
+    this.quizMode = mode;
+    document.getElementById('qmA').classList.toggle('active', mode === 'A');
+    document.getElementById('qmB').classList.toggle('active', mode === 'B');
+    this.startQuiz();
+  },
+
+  startQuiz() {
+    const data = this.getFiltered();
+    if (data.length < 4) {
+      document.getElementById('quizContent').innerHTML = '<p class="text-center" style="padding:40px">クイズには最低4語が必要です。フィルタを変更してください。</p>';
+      return;
+    }
+    this.quizQuestions = this.generateQuizQuestions(data, Math.min(10, data.length));
+    this.quizIndex = 0;
+    this.quizCorrect = 0;
+    this.quizAnswered = false;
+    document.getElementById('quizScore').textContent = `0 / ${this.quizQuestions.length}`;
+    this.renderQuizQuestion();
+  },
+
+  generateQuizQuestions(data, count) {
+    const shuffled = this.shuffle([...data]);
+    const questions = [];
+    for (let i = 0; i < count; i++) {
+      const correct = shuffled[i];
+      const others = data.filter(w => w.id !== correct.id);
+      const wrongChoices = this.shuffle(others).slice(0, 3);
+      const options = this.shuffle([correct, ...wrongChoices]);
+      questions.push({ correct, options });
+    }
+    return questions;
+  },
+
+  renderQuizQuestion() {
+    if (this.quizIndex >= this.quizQuestions.length) {
+      this.renderQuizResult();
+      return;
+    }
+    const q = this.quizQuestions[this.quizIndex];
+    const w = q.correct;
+    let html = '<div class="quiz-question">';
+    if (this.quizMode === 'A') {
+      html += `<div class="q-label">次の場面にふさわしい心情語は？</div>`;
+      html += `<div class="q-text">「${w.example}」</div>`;
+    } else {
+      html += `<div class="q-label">「${w.word}」の意味は？</div>`;
+    }
+    html += '</div><div class="quiz-options">';
+    q.options.forEach((opt, i) => {
+      const label = this.quizMode === 'A' ? opt.word : opt.meaning;
+      html += `<button class="quiz-option" data-idx="${i}" onclick="app.answerQuiz(${i})">${label}</button>`;
+    });
+    html += '</div><button class="quiz-next hidden" id="quizNext" onclick="app.nextQuiz()">次の問題 →</button>';
+    document.getElementById('quizContent').innerHTML = html;
+    this.quizAnswered = false;
+  },
+
+  answerQuiz(idx) {
+    if (this.quizAnswered) return;
+    this.quizAnswered = true;
+    const q = this.quizQuestions[this.quizIndex];
+    const correctIdx = q.options.indexOf(q.correct);
+    const buttons = document.querySelectorAll('.quiz-option');
+    buttons.forEach((btn, i) => {
+      btn.classList.add('disabled');
+      if (i === correctIdx) btn.classList.add('correct');
+      if (i === idx && i !== correctIdx) btn.classList.add('wrong');
+    });
+    if (idx === correctIdx) {
+      this.quizCorrect++;
+      this.markLearned(q.correct.id);
+    }
+    document.getElementById('quizScore').textContent = `${this.quizCorrect} / ${this.quizQuestions.length}`;
+    document.getElementById('quizNext').classList.remove('hidden');
+  },
+
+  nextQuiz() {
+    this.quizIndex++;
+    this.renderQuizQuestion();
+  },
+
+  renderQuizResult() {
+    const pct = Math.round((this.quizCorrect / this.quizQuestions.length) * 100);
+    let msg = pct >= 80 ? 'すばらしい！' : pct >= 60 ? 'いい調子！' : 'もう少し頑張ろう！';
+    document.getElementById('quizContent').innerHTML = `
+      <div class="quiz-result">
+        <div class="score-big">${this.quizCorrect} / ${this.quizQuestions.length}</div>
+        <div class="score-label">正答率 ${pct}% — ${msg}</div>
+        <button class="quiz-next mt-12" onclick="app.startQuiz()">もう一度挑戦</button>
+      </div>`;
+  },
+
+  // === Matching ===
+  startMatching() {
+    if (this.matchTimer) { clearInterval(this.matchTimer); this.matchTimer = null; }
+    document.getElementById('matchComplete').classList.add('hidden');
+    document.getElementById('matchGrid').classList.remove('hidden');
+    const data = this.getFiltered();
+    if (data.length < 6) {
+      document.getElementById('matchGrid').innerHTML = '<p class="text-center" style="padding:40px;grid-column:1/-1">マッチングには最低6語が必要です。</p>';
+      return;
+    }
+    const picked = this.shuffle([...data]).slice(0, 6);
+    let cards = [];
+    picked.forEach(w => {
+      cards.push({ id: w.id, type: 'word', text: w.word, pairId: w.id });
+      cards.push({ id: w.id, type: 'meaning', text: w.meaning.length > 30 ? w.meaning.substring(0,28)+'…' : w.meaning, pairId: w.id });
+    });
+    this.matchCards = this.shuffle(cards);
+    this.matchSelected = null;
+    this.matchPairs = 0;
+    this.matchTotal = picked.length;
+    this.matchSeconds = 0;
+    document.getElementById('matchPairs').textContent = `0 / ${this.matchTotal}`;
+    document.getElementById('matchTimer').textContent = '00:00';
+    this.matchTimer = setInterval(() => {
+      this.matchSeconds++;
+      const m = String(Math.floor(this.matchSeconds/60)).padStart(2,'0');
+      const s = String(this.matchSeconds%60).padStart(2,'0');
+      document.getElementById('matchTimer').textContent = `${m}:${s}`;
+    }, 1000);
+    this.renderMatchGrid();
+  },
+
+  renderMatchGrid() {
+    const grid = document.getElementById('matchGrid');
+    grid.innerHTML = '';
+    this.matchCards.forEach((c, i) => {
+      const div = document.createElement('button');
+      div.className = 'match-card';
+      div.textContent = c.text;
+      div.dataset.idx = i;
+      if (c.matched) div.classList.add('matched');
+      div.onclick = () => this.selectMatch(i);
+      grid.appendChild(div);
+    });
+  },
+
+  selectMatch(idx) {
+    const card = this.matchCards[idx];
+    if (card.matched) return;
+    const cards = document.querySelectorAll('.match-card');
+
+    if (this.matchSelected === null) {
+      this.matchSelected = idx;
+      cards[idx].classList.add('selected');
+    } else if (this.matchSelected === idx) {
+      cards[idx].classList.remove('selected');
+      this.matchSelected = null;
+    } else {
+      const prev = this.matchCards[this.matchSelected];
+      if (prev.pairId === card.pairId && prev.type !== card.type) {
+        prev.matched = true;
+        card.matched = true;
+        cards[this.matchSelected].classList.add('matched');
+        cards[idx].classList.add('matched');
+        cards[this.matchSelected].classList.remove('selected');
+        this.matchPairs++;
+        this.markLearned(card.pairId);
+        document.getElementById('matchPairs').textContent = `${this.matchPairs} / ${this.matchTotal}`;
+        if (this.matchPairs === this.matchTotal) {
+          clearInterval(this.matchTimer);
+          this.matchTimer = null;
+          setTimeout(() => {
+            document.getElementById('matchGrid').classList.add('hidden');
+            document.getElementById('matchComplete').classList.remove('hidden');
+            const m = String(Math.floor(this.matchSeconds/60)).padStart(2,'0');
+            const s = String(this.matchSeconds%60).padStart(2,'0');
+            document.getElementById('matchFinalTime').textContent = `${m}:${s}`;
+          }, 500);
+        }
+      } else {
+        cards[this.matchSelected].classList.remove('selected');
+        cards[idx].classList.add('wrong-flash');
+        cards[this.matchSelected].classList.add('wrong-flash');
+        setTimeout(() => {
+          cards[idx].classList.remove('wrong-flash');
+          if (cards[this.matchSelected]) cards[this.matchSelected].classList.remove('wrong-flash');
+        }, 500);
+      }
+      this.matchSelected = null;
+    }
+  },
+
+  // === Edit Mode ===
+  showEditForm(id) {
+    document.getElementById('editForm').classList.remove('hidden');
+    if (id) {
+      const w = this.data.find(d => d.id === id);
+      if (!w) return;
+      document.getElementById('editFormTitle').textContent = '編集';
+      document.getElementById('efId').value = w.id;
+      document.getElementById('efWord').value = w.word;
+      document.getElementById('efReading').value = w.reading;
+      document.getElementById('efMeaning').value = w.meaning;
+      document.getElementById('efScene').value = w.scene;
+      document.getElementById('efLevel').value = w.level;
+      document.getElementById('efExample').value = w.example;
+      document.getElementById('efRelated').value = (w.relatedWords||[]).join(',');
+    } else {
+      document.getElementById('editFormTitle').textContent = '新規追加';
+      document.getElementById('efId').value = '';
+      document.getElementById('efWord').value = '';
+      document.getElementById('efReading').value = '';
+      document.getElementById('efMeaning').value = '';
+      document.getElementById('efScene').value = '1';
+      document.getElementById('efLevel').value = '1';
+      document.getElementById('efExample').value = '';
+      document.getElementById('efRelated').value = '';
+    }
+  },
+
+  hideEditForm() {
+    document.getElementById('editForm').classList.add('hidden');
+  },
+
+  saveWord() {
+    const id = document.getElementById('efId').value;
+    const word = {
+      word: document.getElementById('efWord').value.trim(),
+      reading: document.getElementById('efReading').value.trim(),
+      meaning: document.getElementById('efMeaning').value.trim(),
+      scene: parseInt(document.getElementById('efScene').value),
+      level: parseInt(document.getElementById('efLevel').value),
+      example: document.getElementById('efExample').value.trim(),
+      relatedWords: document.getElementById('efRelated').value.split(',').map(s=>s.trim()).filter(Boolean)
+    };
+    if (!word.word || !word.meaning) { this.notify('心情語と意味は必須です','error'); return; }
+    if (id) {
+      word.id = parseInt(id);
+      const idx = this.data.findIndex(d => d.id === word.id);
+      if (idx >= 0) this.data[idx] = word;
+    } else {
+      word.id = Math.max(0, ...this.data.map(d=>d.id)) + 1;
+      this.data.push(word);
+    }
+    this.saveData();
+    this.hideEditForm();
+    this.renderEditList();
+    this.notify('保存しました');
+  },
+
+  deleteWord(id) {
+    if (!confirm('この語を削除しますか？')) return;
+    this.data = this.data.filter(d => d.id !== id);
+    this.saveData();
+    this.renderEditList();
+    this.notify('削除しました');
+  },
+
+  renderEditList() {
+    const data = this.getFiltered();
+    const list = document.getElementById('editList');
+    if (!data.length) { list.innerHTML = '<p class="text-center" style="padding:20px;color:var(--text-light)">該当する語がありません</p>'; return; }
+    list.innerHTML = data.map(w => {
+      const s = SCENES.find(s => s.id === w.scene);
+      return `<div class="edit-item">
+        <div class="word-info">
+          <span class="word-name">${w.word}</span>
+          <span class="level-badge level-${w.level}" style="margin-left:6px">${'★'.repeat(w.level)}</span>
+          <div class="word-meta">${s?s.name:''} — ${w.meaning.substring(0,30)}${w.meaning.length>30?'…':''}</div>
+        </div>
+        <button class="btn-edit-item" onclick="app.showEditForm(${w.id})">編集</button>
+        <button class="btn-delete-item" onclick="app.deleteWord(${w.id})">削除</button>
+      </div>`;
+    }).join('');
+  },
+
+  exportData() {
+    const blob = new Blob([JSON.stringify(this.data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'shinjo-go-data.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    this.notify('エクスポートしました');
+  },
+
+  importData(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const imported = JSON.parse(ev.target.result);
+        if (!Array.isArray(imported)) throw new Error('invalid');
+        // Merge: update existing by id, add new
+        imported.forEach(w => {
+          const idx = this.data.findIndex(d => d.id === w.id);
+          if (idx >= 0) this.data[idx] = w;
+          else this.data.push(w);
+        });
+        this.saveData();
+        this.renderEditList();
+        this.notify(`${imported.length}語をインポートしました`);
+      } catch { this.notify('JSONファイルの形式が正しくありません','error'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  },
+
+  resetData() {
+    if (!confirm('初期データに戻しますか？カスタムデータは失われます。')) return;
+    this.data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    this.saveData();
+    this.renderEditList();
+    this.notify('初期データに戻しました');
+  },
+
+  saveData() {
+    localStorage.setItem('shinjo-custom-data', JSON.stringify(this.data));
+  },
+
+  // === Progress ===
+  loadProgress() {
+    const saved = localStorage.getItem('shinjo-learned');
+    this.learned = saved ? new Set(JSON.parse(saved)) : new Set();
+  },
+
+  markLearned(id) {
+    this.learned.add(id);
+    localStorage.setItem('shinjo-learned', JSON.stringify([...this.learned]));
+  },
+
+  updateProgress() {
+    const total = this.data.length;
+    const learned = [...this.learned].filter(id => this.data.some(d => d.id === id)).length;
+    const pct = total ? Math.round((learned / total) * 100) : 0;
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressText').textContent = `${learned} / ${total} 語 習得済み（${pct}%）`;
+  },
+
+  // === Utilities ===
+  shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  },
+
+  notify(msg, type) {
+    const el = document.getElementById('notification');
+    el.textContent = msg;
+    el.className = 'notification' + (type === 'error' ? ' error' : '');
+    setTimeout(() => el.classList.add('hidden'), 2500);
+  }
+};
+
+// Initialize
+app.init();
+</script>
+</body>
+</html>

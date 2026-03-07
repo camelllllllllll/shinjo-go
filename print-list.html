@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>心情語一覧表（印刷用）</title>
+<style>
+:root {
+  --primary: #2563eb;
+  --primary-light: #dbeafe;
+  --level1: #22c55e;
+  --level2: #f59e0b;
+  --level3: #ef4444;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: "Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif; color:#1e293b; font-size:10pt; line-height:1.5; }
+
+/* Screen styles */
+@media screen {
+  body { background:#f0f4f8; padding:20px; }
+  .page-header { background:var(--primary); color:#fff; padding:16px 24px; border-radius:12px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; }
+  .page-header h1 { font-size:1.3rem; }
+  .controls { display:flex; gap:8px; align-items:center; }
+  .controls select, .controls button { padding:6px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.2); color:#fff; font-size:0.85rem; cursor:pointer; }
+  .controls button:hover { background:rgba(255,255,255,0.3); }
+  .print-btn { background:rgba(255,255,255,0.9) !important; color:var(--primary) !important; font-weight:bold; }
+}
+
+/* Shared table styles */
+.scene-section { margin-bottom:16px; }
+.scene-title { font-size:11pt; font-weight:bold; color:var(--primary); padding:4px 8px; border-bottom:2px solid var(--primary); margin-bottom:6px; }
+table { width:100%; border-collapse:collapse; font-size:9pt; }
+th { background:var(--primary-light); padding:4px 6px; text-align:left; font-size:8pt; color:#1d4ed8; border:1px solid #cbd5e1; }
+td { padding:4px 6px; border:1px solid #e2e8f0; vertical-align:top; }
+.lv { display:inline-block; padding:1px 6px; border-radius:8px; font-size:7pt; font-weight:bold; color:#fff; }
+.lv1 { background:var(--level1); }
+.lv2 { background:var(--level2); }
+.lv3 { background:var(--level3); }
+.word-col { font-weight:bold; white-space:nowrap; }
+.reading-col { color:#64748b; font-size:8pt; white-space:nowrap; }
+.example-col { font-size:8pt; color:#64748b; }
+
+/* Print styles */
+@media print {
+  body { padding:0; background:#fff; }
+  .page-header { display:none; }
+  .scene-section { page-break-inside:avoid; }
+  .scene-title { color:#000; border-color:#000; }
+  table { font-size:8pt; }
+  th { background:#eee !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .lv { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  @page { margin:12mm 10mm; size:A4; }
+}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>心情語一覧表</h1>
+  <div class="controls">
+    <select id="levelFilter" onchange="filterList()">
+      <option value="all">全レベル</option>
+      <option value="1">★ 基本</option>
+      <option value="2">★★ 標準</option>
+      <option value="3">★★★ 発展</option>
+    </select>
+    <button class="print-btn" onclick="window.print()">🖨 印刷</button>
+  </div>
+</div>
+
+<div id="content"></div>
+
+<script>
+const SCENES = [
+  { id:1, name:"喜び・感動の場面" },
+  { id:2, name:"悲しみ・別れの場面" },
+  { id:3, name:"怒り・不満の場面" },
+  { id:4, name:"不安・恐れの場面" },
+  { id:5, name:"葛藤・迷いの場面" },
+  { id:6, name:"成長・気づきの場面" },
+  { id:7, name:"人間関係の場面" },
+  { id:8, name:"自然・情景と心情の場面" }
+];
+
+const DATA = [
+  {word:"うれしい",reading:"うれしい",meaning:"望んでいたことが実現して、よい気持ちになること",scene:1,level:1,example:"合格の知らせを聞いて、うれしさのあまり飛び上がった。"},
+  {word:"楽しい",reading:"たのしい",meaning:"心が明るく、愉快な気持ちになること",scene:1,level:1,example:"友達と過ごす時間が楽しくて、時間がたつのを忘れた。"},
+  {word:"わくわくする",reading:"わくわくする",meaning:"期待や喜びで胸が高鳴ること",scene:1,level:1,example:"遠足の前日、わくわくして眠れなかった。"},
+  {word:"ほっとする",reading:"ほっとする",meaning:"心配や緊張が解けて安心すること",scene:1,level:1,example:"テストが終わり、ほっと肩の力が抜けた。"},
+  {word:"幸せ",reading:"しあわせ",meaning:"満ち足りた穏やかな喜びを感じること",scene:1,level:1,example:"家族みんなで食卓を囲む幸せをかみしめた。"},
+  {word:"感激する",reading:"かんげきする",meaning:"深く心を動かされ、強い感動を覚えること",scene:1,level:2,example:"先生の温かい言葉に感激して、涙がこぼれた。"},
+  {word:"誇らしい",reading:"ほこらしい",meaning:"自分や仲間のことを立派に思い、胸を張る気持ち",scene:1,level:2,example:"弟の活躍を見て、姉は誇らしい気持ちになった。"},
+  {word:"胸が躍る",reading:"むねがおどる",meaning:"期待や喜びで心が弾み、高揚すること",scene:1,level:2,example:"夢だった舞台に立てると聞き、胸が躍った。"},
+  {word:"心が弾む",reading:"こころがはずむ",meaning:"うれしくて、うきうきした気持ちになること",scene:1,level:2,example:"久しぶりの再会に、心が弾んだ。"},
+  {word:"満ち足りた",reading:"みちたりた",meaning:"十分に満足して、何も不足がない気持ち",scene:1,level:2,example:"穏やかな夕暮れの中、満ち足りた気持ちで空を見上げた。"},
+  {word:"歓喜",reading:"かんき",meaning:"この上なく大きな喜び",scene:1,level:3,example:"優勝が決まった瞬間、チームは歓喜に沸いた。"},
+  {word:"感無量",reading:"かんむりょう",meaning:"感動が深すぎて言葉にできないこと",scene:1,level:3,example:"卒業式で恩師の姿を見て、感無量の面持ちだった。"},
+  {word:"高揚する",reading:"こうようする",meaning:"気持ちが高まり、テンションが上がること",scene:1,level:3,example:"応援の声に気持ちが高揚し、力が湧いてきた。"},
+  {word:"充実感",reading:"じゅうじつかん",meaning:"やるべきことをやり遂げた後の満たされた気持ち",scene:1,level:3,example:"練習を重ねた日々を振り返り、充実感に包まれた。"},
+  {word:"達成感",reading:"たっせいかん",meaning:"目標を成し遂げたときに感じる深い満足感",scene:1,level:3,example:"長い努力の末に完成した作品に、達成感を覚えた。"},
+
+  {word:"悲しい",reading:"かなしい",meaning:"つらい出来事に心が痛み、涙が出そうになること",scene:2,level:1,example:"大好きだった犬が死んでしまい、悲しくてたまらなかった。"},
+  {word:"さびしい",reading:"さびしい",meaning:"ひとりぼっちで心に穴が開いたような気持ち",scene:2,level:1,example:"転校した友達のことを思い出すと、さびしさがこみ上げた。"},
+  {word:"つらい",reading:"つらい",meaning:"心や体が苦しくて耐えがたいこと",scene:2,level:1,example:"誰にもわかってもらえないことが、何よりつらかった。"},
+  {word:"がっかりする",reading:"がっかりする",meaning:"期待はずれで気持ちが沈むこと",scene:2,level:1,example:"楽しみにしていた遠足が中止になり、がっかりした。"},
+  {word:"心細い",reading:"こころぼそい",meaning:"頼るものがなく、不安で寂しいこと",scene:2,level:1,example:"初めて一人で電車に乗ったとき、心細さを感じた。"},
+  {word:"切ない",reading:"せつない",meaning:"悲しさとやるせなさが胸にしみて苦しいこと",scene:2,level:2,example:"もう会えないと知ったとき、切なさが胸を締めつけた。"},
+  {word:"胸が痛む",reading:"むねがいたむ",meaning:"悲しみや同情で心が苦しくなること",scene:2,level:2,example:"友達の涙を見て、胸が痛んだ。"},
+  {word:"やるせない",reading:"やるせない",meaning:"どうしようもなく悲しく、行き場のない気持ち",scene:2,level:2,example:"努力が報われなかったやるせなさに、肩を落とした。"},
+  {word:"心が沈む",reading:"こころがしずむ",meaning:"気分が落ち込み、暗い気持ちになること",scene:2,level:2,example:"雨の日の帰り道、ひとりで歩くと心が沈んだ。"},
+  {word:"未練",reading:"みれん",meaning:"あきらめきれず、心が残ること",scene:2,level:2,example:"引っ越す日、この町への未練が胸に残った。"},
+  {word:"喪失感",reading:"そうしつかん",meaning:"大切なものを失った後の空虚で力の抜ける気持ち",scene:2,level:3,example:"親友が転校した後、大きな喪失感に包まれた。"},
+  {word:"惜別",reading:"せきべつ",meaning:"別れを惜しみ、名残を惜しむ気持ち",scene:2,level:3,example:"卒業式の日、惜別の涙を流した。"},
+  {word:"哀惜",reading:"あいせき",meaning:"悲しみながら惜しむ気持ち",scene:2,level:3,example:"恩師の訃報に接し、哀惜の念を抱いた。"},
+  {word:"虚脱感",reading:"きょだつかん",meaning:"力が抜けて何もする気が起きない空っぽの状態",scene:2,level:3,example:"大会が終わった後、しばらく虚脱感に襲われた。"},
+  {word:"感傷的",reading:"かんしょうてき",meaning:"ささいなことにも悲しさを感じやすい状態",scene:2,level:3,example:"秋の夕暮れに、感傷的な気分になった。"},
+
+  {word:"腹が立つ",reading:"はらがたつ",meaning:"不満や怒りを感じ、いらいらすること",scene:3,level:1,example:"約束を破られて、腹が立った。"},
+  {word:"悔しい",reading:"くやしい",meaning:"負けたり失敗して、残念で腹立たしいこと",scene:3,level:1,example:"あと一点で負けてしまい、悔しさで拳を握りしめた。"},
+  {word:"いらいらする",reading:"いらいらする",meaning:"思い通りにならず、気持ちが落ち着かないこと",scene:3,level:1,example:"何度やってもうまくいかず、いらいらした。"},
+  {word:"むかつく",reading:"むかつく",meaning:"強い不快感や怒りが胸にこみ上げること",scene:3,level:1,example:"陰口を言われていると知り、むかついた。"},
+  {word:"許せない",reading:"ゆるせない",meaning:"相手の行いが受け入れられず、怒りを覚えること",scene:3,level:1,example:"弱い者いじめをする態度が許せなかった。"},
+  {word:"憤る",reading:"いきどおる",meaning:"不正や理不尽なことに対して強く怒ること",scene:3,level:2,example:"友達が不当な扱いを受けたことに憤った。"},
+  {word:"やりきれない",reading:"やりきれない",meaning:"あまりのひどさに我慢できず、やりどころのない気持ち",scene:3,level:2,example:"何の罪もない人が傷つけられるのを見て、やりきれなかった。"},
+  {word:"歯がゆい",reading:"はがゆい",meaning:"思い通りにならずもどかしく、じれったいこと",scene:3,level:2,example:"助けたいのに何もできない自分が歯がゆかった。"},
+  {word:"憤慨する",reading:"ふんがいする",meaning:"不正や理不尽に対して怒りをあらわにすること",scene:3,level:2,example:"ルール違反をしても平気な態度に憤慨した。"},
+  {word:"もどかしい",reading:"もどかしい",meaning:"思うようにならず、じれったい気持ち",scene:3,level:2,example:"言いたいことがうまく伝わらず、もどかしかった。"},
+  {word:"義憤",reading:"ぎふん",meaning:"正義のために怒ること。不正を許せない怒り",scene:3,level:3,example:"弱い立場の人が虐げられるのを見て、義憤にかられた。"},
+  {word:"激昂する",reading:"げきこうする",meaning:"怒りが爆発して激しく興奮すること",scene:3,level:3,example:"あまりの仕打ちに激昂し、声を荒らげた。"},
+  {word:"憤り",reading:"いきどおり",meaning:"心の底からわきあがる強い怒りの気持ち",scene:3,level:3,example:"不公平な判定への憤りを抑えきれなかった。"},
+  {word:"遺憾",reading:"いかん",meaning:"期待通りにならず、残念に思うこと",scene:3,level:3,example:"信頼していた人の裏切りを遺憾に思った。"},
+  {word:"忍びない",reading:"しのびない",meaning:"かわいそうで見ていられない、我慢できない気持ち",scene:3,level:3,example:"一人で泣いている姿を見ると忍びなかった。"},
+
+  {word:"不安",reading:"ふあん",meaning:"これからどうなるか心配で落ち着かないこと",scene:4,level:1,example:"明日の発表のことを思うと、不安で胸がいっぱいになった。"},
+  {word:"こわい",reading:"こわい",meaning:"危険を感じて身がすくむこと",scene:4,level:1,example:"暗い夜道をひとりで歩くのはこわかった。"},
+  {word:"心配",reading:"しんぱい",meaning:"悪いことが起きるのではないかと気がかりなこと",scene:4,level:1,example:"帰りの遅い母を心配して、何度も時計を見た。"},
+  {word:"びくびくする",reading:"びくびくする",meaning:"何かを恐れて、おどおどすること",scene:4,level:1,example:"先生に叱られるのではと、びくびくしていた。"},
+  {word:"おびえる",reading:"おびえる",meaning:"恐怖で体がこわばり、心が縮むこと",scene:4,level:1,example:"雷の音におびえて、布団にもぐりこんだ。"},
+  {word:"動揺する",reading:"どうようする",meaning:"予想外のことに心が揺れ、落ち着きを失うこと",scene:4,level:2,example:"突然の知らせに動揺し、言葉が出なかった。"},
+  {word:"胸騒ぎ",reading:"むなさわぎ",meaning:"何か悪いことが起きそうな不吉な予感",scene:4,level:2,example:"朝から胸騒ぎがして、一日落ち着かなかった。"},
+  {word:"たじろぐ",reading:"たじろぐ",meaning:"相手の勢いや雰囲気に気おされ、一歩引くこと",scene:4,level:2,example:"厳しい目で見つめられ、思わずたじろいだ。"},
+  {word:"緊張する",reading:"きんちょうする",meaning:"体も心もピンと張り詰め、力が入ること",scene:4,level:2,example:"大勢の前でのスピーチに緊張し、手が震えた。"},
+  {word:"怯える",reading:"おびえる",meaning:"恐怖に心が支配され、身が縮こまること",scene:4,level:2,example:"見知らぬ大人の怒鳴り声に怯えた。"},
+  {word:"恐怖",reading:"きょうふ",meaning:"身がすくむほどの強い怖さ",scene:4,level:3,example:"暗闇の中で物音がして、恐怖に体が固まった。"},
+  {word:"戦慄する",reading:"せんりつする",meaning:"恐ろしさのあまり身体が震えること",scene:4,level:3,example:"その光景に戦慄し、声も出せなかった。"},
+  {word:"狼狽する",reading:"ろうばいする",meaning:"あわてふためき、どうしてよいかわからなくなること",scene:4,level:3,example:"予想外の事態に狼狽し、足がもつれた。"},
+  {word:"危惧する",reading:"きぐする",meaning:"悪い結果になりはしないかと心配すること",scene:4,level:3,example:"友達の様子がおかしく、何かあったのではと危惧した。"},
+  {word:"畏怖",reading:"いふ",meaning:"偉大なものへの恐れとうやまいが入り混じった気持ち",scene:4,level:3,example:"大自然の力を前に、畏怖の念を抱いた。"},
+
+  {word:"迷う",reading:"まよう",meaning:"どうすればよいか決められず、心が揺れること",scene:5,level:1,example:"正直に話すべきか黙っているべきか、迷った。"},
+  {word:"困る",reading:"こまる",meaning:"どう対処してよいかわからず、途方にくれること",scene:5,level:1,example:"道に迷ってしまい、困り果てた。"},
+  {word:"後悔する",reading:"こうかいする",meaning:"あのときこうすればよかったと悔やむこと",scene:5,level:1,example:"あのとき声をかけなかったことを後悔した。"},
+  {word:"気まずい",reading:"きまずい",meaning:"その場の雰囲気が悪く、居心地が悪いこと",scene:5,level:1,example:"けんかした後の教室は気まずい空気が流れていた。"},
+  {word:"もやもやする",reading:"もやもやする",meaning:"すっきりしない気持ちが胸に残ること",scene:5,level:1,example:"何かが引っかかって、ずっともやもやしていた。"},
+  {word:"葛藤する",reading:"かっとうする",meaning:"二つの思いの間で心が引き裂かれること",scene:5,level:2,example:"友達をかばうか、本当のことを言うか、葛藤した。"},
+  {word:"ためらう",reading:"ためらう",meaning:"決断できずに立ち止まり、踏み出せないこと",scene:5,level:2,example:"声をかけようとしたが、ためらって足が止まった。"},
+  {word:"板挟み",reading:"いたばさみ",meaning:"両方の間に挟まれて、どちらにもつけない状態",scene:5,level:2,example:"二人の友達の間で板挟みになり、苦しかった。"},
+  {word:"思い悩む",reading:"おもいなやむ",meaning:"深く考え込んで苦しみ、答えが出ないこと",scene:5,level:2,example:"進路のことを思い悩み、夜も眠れなかった。"},
+  {word:"躊躇する",reading:"ちゅうちょする",meaning:"やるかやめるか決められず、ぐずぐずすること",scene:5,level:2,example:"手を挙げようとしたが躊躇してしまった。"},
+  {word:"逡巡する",reading:"しゅんじゅんする",meaning:"決心がつかず、あれこれ迷い続けること",scene:5,level:3,example:"扉の前で逡巡したが、ついに決意して中に入った。"},
+  {word:"煩悶する",reading:"はんもんする",meaning:"悩み苦しんで心が乱れ、苦しむこと",scene:5,level:3,example:"自分の弱さに煩悶し、一人で部屋にこもった。"},
+  {word:"自責の念",reading:"じせきのねん",meaning:"自分を責める気持ち。自分のせいだと悔やむこと",scene:5,level:3,example:"あのとき止めていればと、自責の念にかられた。"},
+  {word:"ジレンマ",reading:"じれんま",meaning:"どちらを選んでも問題がある、二者択一の苦しい状態",scene:5,level:3,example:"正直に言えば友を傷つけ、黙れば嘘になるジレンマに苦しんだ。"},
+  {word:"忸怩たる",reading:"じくじたる",meaning:"自分が恥ずかしく、情けないと深く感じること",scene:5,level:3,example:"逃げ出した自分に対して、忸怩たる思いを抱いた。"},
+
+  {word:"気づく",reading:"きづく",meaning:"今まで見えていなかったことが、はっとわかること",scene:6,level:1,example:"母がいつも自分のために早起きしていたことに気づいた。"},
+  {word:"反省する",reading:"はんせいする",meaning:"自分の行いを振り返り、改めようと思うこと",scene:6,level:1,example:"友達に言いすぎたことを反省した。"},
+  {word:"決心する",reading:"けっしんする",meaning:"こうしようと心をかたく決めること",scene:6,level:1,example:"もう逃げないと決心し、前を向いた。"},
+  {word:"成長する",reading:"せいちょうする",meaning:"経験を通じて、前の自分より一段階進むこと",scene:6,level:1,example:"この出来事を通じて、太郎は少し成長した。"},
+  {word:"見直す",reading:"みなおす",meaning:"相手への評価がよい方向に変わること",scene:6,level:1,example:"彼の勇気ある行動を見て、見直した。"},
+  {word:"悟る",reading:"さとる",meaning:"物事の本質や真実に深く気づくこと",scene:6,level:2,example:"人の痛みは経験しないとわからないと悟った。"},
+  {word:"自覚する",reading:"じかくする",meaning:"自分の立場や役割をはっきり認識すること",scene:6,level:2,example:"チームの一員としての責任を自覚した。"},
+  {word:"奮い立つ",reading:"ふるいたつ",meaning:"気持ちを奮い起こし、頑張ろうとすること",scene:6,level:2,example:"仲間の声援を聞いて、奮い立った。"},
+  {word:"覚悟する",reading:"かくごする",meaning:"困難や結果を受け入れる強い決意をすること",scene:6,level:2,example:"厳しい練習に耐える覚悟を決めた。"},
+  {word:"改心する",reading:"かいしんする",meaning:"自分の過ちを認め、心を入れ替えること",scene:6,level:2,example:"いじめていたことを恥じ、改心した。"},
+  {word:"開眼する",reading:"かいがんする",meaning:"目が開かれたように真実や大切なことに気づくこと",scene:6,level:3,example:"師匠の一言で、ものの見方が変わり開眼した。"},
+  {word:"克己",reading:"こっき",meaning:"自分の弱さや欲望に打ち勝つこと",scene:6,level:3,example:"苦しい場面でも克己の精神で乗り越えた。"},
+  {word:"感慨深い",reading:"かんがいぶかい",meaning:"過去を振り返り、しみじみと深く感じ入ること",scene:6,level:3,example:"六年間を振り返ると、感慨深いものがあった。"},
+  {word:"発奮する",reading:"はっぷんする",meaning:"刺激を受けて気持ちを奮い立たせること",scene:6,level:3,example:"ライバルの活躍に発奮し、自分も練習に打ち込んだ。"},
+  {word:"矜持",reading:"きょうじ",meaning:"自分の能力や信念に対する誇りと自負",scene:6,level:3,example:"どんな困難にも屈しない矜持を持ち続けた。"},
+
+  {word:"憧れる",reading:"あこがれる",meaning:"すばらしいと思い、自分もそうなりたいと願うこと",scene:7,level:1,example:"堂々とスピーチする先輩に憧れた。"},
+  {word:"信じる",reading:"しんじる",meaning:"相手を疑わず、頼りにすること",scene:7,level:1,example:"どんなときも友達を信じ続けた。"},
+  {word:"うらやましい",reading:"うらやましい",meaning:"他人の良い面を見て、自分もそうなりたいと思うこと",scene:7,level:1,example:"何でもできる友達がうらやましかった。"},
+  {word:"親しみ",reading:"したしみ",meaning:"相手に対して温かく、近しく感じる気持ち",scene:7,level:1,example:"話すうちに、彼に親しみを感じるようになった。"},
+  {word:"申し訳ない",reading:"もうしわけない",meaning:"相手に対して悪いことをしたと、すまなく思うこと",scene:7,level:1,example:"迷惑をかけてしまい、申し訳ない気持ちでいっぱいだった。"},
+  {word:"尊敬する",reading:"そんけいする",meaning:"相手の人柄や行いを心から立派だと思うこと",scene:7,level:2,example:"困難に負けない父の姿を尊敬していた。"},
+  {word:"嫉妬する",reading:"しっとする",meaning:"他人が自分より優れていることをねたむこと",scene:7,level:2,example:"いつも一番の友達に、心のどこかで嫉妬していた。"},
+  {word:"共感する",reading:"きょうかんする",meaning:"相手の気持ちに寄り添い、同じように感じること",scene:7,level:2,example:"主人公の苦しみに共感し、涙があふれた。"},
+  {word:"疎外感",reading:"そがいかん",meaning:"自分だけが仲間はずれにされているような孤独な気持ち",scene:7,level:2,example:"みんなが楽しそうに話す中、疎外感を覚えた。"},
+  {word:"心を許す",reading:"こころをゆるす",meaning:"警戒を解き、相手を信頼して本音を見せること",scene:7,level:2,example:"最初は警戒していたが、次第に心を許すようになった。"},
+  {word:"敬慕する",reading:"けいぼする",meaning:"深く尊敬し、慕い続けること",scene:7,level:3,example:"先生を敬慕し、その教えを胸に刻んだ。"},
+  {word:"羨望",reading:"せんぼう",meaning:"他人の幸福や才能を強くうらやむ気持ち",scene:7,level:3,example:"自由に夢を追える友人に羨望のまなざしを向けた。"},
+  {word:"確執",reading:"かくしつ",meaning:"互いに譲らず、対立が続くこと",scene:7,level:3,example:"二人の間には深い確執があった。"},
+  {word:"畏敬の念",reading:"いけいのねん",meaning:"偉大なものに対する尊敬と畏れの入り混じった気持ち",scene:7,level:3,example:"命がけで人を助けた人に、畏敬の念を抱いた。"},
+  {word:"連帯感",reading:"れんたいかん",meaning:"仲間と心がつながり、一体になっている感覚",scene:7,level:3,example:"同じ目標に向かう仲間との連帯感が力になった。"},
+
+  {word:"さわやか",reading:"さわやか",meaning:"すがすがしく気持ちがよいこと",scene:8,level:1,example:"朝の風がさわやかで、心が晴れた。"},
+  {word:"穏やか",reading:"おだやか",meaning:"静かで落ち着いた、平和な気持ち",scene:8,level:1,example:"波の音を聞きながら、穏やかな気持ちになった。"},
+  {word:"しみじみ",reading:"しみじみ",meaning:"心の奥まで深くしんみりと感じること",scene:8,level:1,example:"秋の夕焼けを見て、しみじみと一年を振り返った。"},
+  {word:"のどか",reading:"のどか",meaning:"ゆったりとして平和なこと",scene:8,level:1,example:"のどかな田園風景が、疲れた心を癒やした。"},
+  {word:"すがすがしい",reading:"すがすがしい",meaning:"さっぱりとして、心も体も軽くなること",scene:8,level:1,example:"雨上がりの空気がすがすがしく、深呼吸した。"},
+  {word:"郷愁",reading:"きょうしゅう",meaning:"故郷や過ぎた日々を懐かしく思い、胸が締まる気持ち",scene:8,level:2,example:"夕焼けの景色が郷愁を誘い、ふるさとを思い出した。"},
+  {word:"もの悲しい",reading:"ものがなしい",meaning:"はっきりした理由もなく、なんとなく悲しいこと",scene:8,level:2,example:"秋の風にもの悲しさを感じた。"},
+  {word:"余韻",reading:"よいん",meaning:"出来事が終わった後にも残る、しみじみとした感慨",scene:8,level:2,example:"演奏が終わった後も、しばらく余韻に浸っていた。"},
+  {word:"寂しさ",reading:"さびしさ",meaning:"静かで人気がなく、心にぽっかり穴が開いた気持ち",scene:8,level:2,example:"祭りの後の静けさに、寂しさを覚えた。"},
+  {word:"荘厳",reading:"そうごん",meaning:"おごそかで、心が引き締まるような重々しさ",scene:8,level:2,example:"朝日に照らされた山々は荘厳で、言葉を失った。"},
+  {word:"哀愁",reading:"あいしゅう",meaning:"悲しみと寂しさが静かに漂うしっとりとした趣",scene:8,level:3,example:"夕暮れの港に哀愁が漂っていた。"},
+  {word:"寂寥感",reading:"せきりょうかん",meaning:"もの寂しく、心が空虚に感じる深い寂しさ",scene:8,level:3,example:"誰もいない校庭に寂寥感が広がっていた。"},
+  {word:"情緒",reading:"じょうちょ",meaning:"風景や出来事から感じる細やかな味わいや雰囲気",scene:8,level:3,example:"古い街並みには独特の情緒があった。"},
+  {word:"幽玄",reading:"ゆうげん",meaning:"奥深く、言葉では表しきれない神秘的な美しさ",scene:8,level:3,example:"霧に包まれた森は幽玄な雰囲気をたたえていた。"},
+  {word:"感傷に浸る",reading:"かんしょうにひたる",meaning:"悲しみや懐かしさに身を任せ、しみじみとすること",scene:8,level:3,example:"古い写真を見ながら、感傷に浸った。"}
+];
+
+function filterList() {
+  const level = document.getElementById('levelFilter').value;
+  render(level);
+}
+
+function render(levelFilter) {
+  const container = document.getElementById('content');
+  let html = '';
+  SCENES.forEach(scene => {
+    let words = DATA.filter(w => w.scene === scene.id);
+    if (levelFilter && levelFilter !== 'all') words = words.filter(w => w.level == levelFilter);
+    if (!words.length) return;
+    words.sort((a,b) => a.level - b.level);
+    html += `<div class="scene-section"><div class="scene-title">${scene.name}</div>`;
+    html += '<table><thead><tr><th style="width:45px">Lv</th><th style="width:80px">心情語</th><th style="width:70px">読み</th><th>意味</th><th>用例</th></tr></thead><tbody>';
+    words.forEach(w => {
+      html += `<tr><td><span class="lv lv${w.level}">${'★'.repeat(w.level)}</span></td><td class="word-col">${w.word}</td><td class="reading-col">${w.reading}</td><td>${w.meaning}</td><td class="example-col">${w.example}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+  });
+  container.innerHTML = html;
+}
+
+render('all');
+</script>
+</body>
+</html>
