@@ -619,11 +619,29 @@ const app = {
     this.renderFlashcard();
   },
 
-  // Generate hint: first reading char + 〇 for remaining word chars
+  // Detect character type
+  charType(ch) {
+    const code = ch.charCodeAt(0);
+    if (code >= 0x30A0 && code <= 0x30FF) return '△'; // カタカナ
+    if (code >= 0x3040 && code <= 0x309F) return '〇'; // ひらがな
+    if (code >= 0x4E00 && code <= 0x9FFF) return '▢'; // 漢字
+    return '〇';
+  },
+
+  // Generate hint: first reading char + symbols matching reading length
+  // 〇=ひらがな ▢=漢字 △=カタカナ (based on word characters)
   makeHint(word, reading) {
     const firstChar = reading.charAt(0);
-    const rest = '〇'.repeat(word.length - 1);
-    return firstChar + rest;
+    let hint = firstChar;
+    // Map reading positions to word character types
+    // Build a type array from the word's characters, stretched to reading length
+    const wordTypes = [...word].map(ch => this.charType(ch));
+    const ratio = word.length / reading.length;
+    for (let i = 1; i < reading.length; i++) {
+      const wordIdx = Math.min(Math.floor(i * ratio), word.length - 1);
+      hint += wordTypes[wordIdx];
+    }
+    return hint;
   },
 
   // Replace word in example with hint brackets
