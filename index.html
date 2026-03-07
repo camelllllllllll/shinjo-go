@@ -80,7 +80,10 @@ button { cursor:pointer; border:none; font-family:inherit; font-size:inherit; }
 .flashcard-back { transform:rotateY(180deg); text-align:center; }
 .flashcard-front .fc-meaning { font-size:1.05rem; margin-bottom:16px; padding:14px; background:var(--primary-light); border-radius:8px; text-align:left; line-height:1.7; }
 .flashcard-front .fc-example-hint { font-size:1rem; color:var(--text); margin-bottom:12px; padding:12px; border-left:3px solid var(--primary); text-align:left; line-height:1.7; }
-.flashcard-front .fc-example-hint .blank { font-weight:bold; color:var(--primary); font-size:1.1em; }
+.flashcard-front .fc-example-hint .blank { font-weight:bold; color:var(--primary); font-size:1.1em; display:inline-block; }
+.flashcard-front .fc-example-hint .blank-lines { display:inline-flex; flex-direction:column; align-items:center; vertical-align:middle; line-height:1.3; gap:0; background:var(--primary-light); padding:2px 6px; border-radius:6px; }
+.flashcard-front .fc-example-hint .blank-reading { font-size:0.85em; letter-spacing:0.1em; }
+.flashcard-front .fc-example-hint .blank-writing { font-size:0.85em; letter-spacing:0.1em; color:var(--primary-dark); }
 .flashcard-front .hint { font-size:0.85rem; color:var(--text-light); margin-top:12px; }
 .flashcard-front .fc-meta { display:flex; gap:8px; align-items:center; margin-top:8px; }
 .flashcard-front .scene-tag { display:inline-block; padding:4px 10px; background:#e2e8f0; border-radius:6px; font-size:0.8rem; }
@@ -628,25 +631,27 @@ const app = {
     return '〇';
   },
 
-  // Generate hint: first reading char + symbols matching reading length
-  // 〇=ひらがな ▢=漢字 △=カタカナ (based on word characters)
-  makeHint(word, reading) {
-    const firstChar = reading.charAt(0);
-    let hint = firstChar;
-    // Map reading positions to word character types
-    // Build a type array from the word's characters, stretched to reading length
-    const wordTypes = [...word].map(ch => this.charType(ch));
-    const ratio = word.length / reading.length;
-    for (let i = 1; i < reading.length; i++) {
-      const wordIdx = Math.min(Math.floor(i * ratio), word.length - 1);
-      hint += wordTypes[wordIdx];
-    }
-    return hint;
+  // Generate two-line hint
+  // Top: reading line (first char + 〇 for remaining reading chars)
+  // Bottom: writing line (each word char mapped to symbol)
+  makeHintReading(reading) {
+    return reading.charAt(0) + '〇'.repeat(reading.length - 1);
   },
 
-  // Replace word in example with hint brackets
+  makeHintWriting(word) {
+    return [...word].map(ch => this.charType(ch)).join('');
+  },
+
+  // Build HTML for two-line hint block
+  makeHintHTML(word, reading) {
+    const top = this.makeHintReading(reading);
+    const bottom = this.makeHintWriting(word);
+    return `<span class="blank-lines"><span class="blank-reading">${top}</span><span class="blank-writing">${bottom}</span></span>`;
+  },
+
+  // Replace word in example with hint (HTML version for flashcard)
   makeExampleWithHint(example, word, reading) {
-    const hint = '【' + this.makeHint(word, reading) + '】';
+    const hint = this.makeHintHTML(word, reading);
     // Try exact match first
     if (example.includes(word)) {
       return example.replace(word, hint);
@@ -703,7 +708,7 @@ const app = {
     // Front: meaning + example with hint
     document.getElementById('fcMeaning').textContent = w.meaning;
     const hintExample = this.makeExampleWithHint(w.example, w.word, w.reading);
-    document.getElementById('fcExampleHint').innerHTML = '「' + hintExample.replace(/【(.+?)】/, '<span class="blank">【$1】</span>') + '」';
+    document.getElementById('fcExampleHint').innerHTML = '「' + hintExample + '」';
     const s = SCENES.find(s => s.id === w.scene);
     document.getElementById('fcScene').textContent = s ? s.name : '';
     document.getElementById('fcLevel').textContent = '★'.repeat(w.level);
