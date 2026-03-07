@@ -649,49 +649,50 @@ const app = {
     return `<span class="blank-lines"><span class="blank-reading">${top}</span><span class="blank-writing">${bottom}</span></span>`;
   },
 
-  // Replace word in example with hint (HTML version for flashcard)
-  makeExampleWithHint(example, word, reading) {
-    const hint = this.makeHintHTML(word, reading);
-    // Try exact match first
-    if (example.includes(word)) {
-      return example.replace(word, hint);
-    }
-    // Try stems by removing common suffixes
-    const suffixes = ['する', 'い', 'な', 'に浸る', 'の念', 'たる'];
-    for (const suffix of suffixes) {
-      if (word.endsWith(suffix)) {
-        const stem = word.slice(0, -suffix.length);
-        if (stem.length >= 1 && example.includes(stem)) {
-          return example.replace(stem, hint);
+  // Find the word (or its stem) in the example, return { found, stemReading }
+  findStemInExample(example, word, reading) {
+    // 1. Exact match
+    if (example.includes(word)) return { found: word, stemReading: reading };
+    // 2. Suffix removal (word suffix → reading suffix)
+    const suffixPairs = [
+      ['する','する'],['い','い'],['な','な'],['く','く'],['う','う'],['る','る'],
+      ['に浸る','にひたる'],['の念','のねん'],['たる','たる']
+    ];
+    for (const [wS, rS] of suffixPairs) {
+      if (word.endsWith(wS) && reading.endsWith(rS)) {
+        const stem = word.slice(0, -wS.length);
+        const stemR = reading.slice(0, -rS.length);
+        if (stem.length >= 1 && stemR.length >= 1 && example.includes(stem)) {
+          return { found: stem, stemReading: stemR };
         }
       }
     }
-    // Try progressively shorter prefixes of the word
+    // 3. Progressive prefix
     for (let len = word.length - 1; len >= 2; len--) {
       const prefix = word.slice(0, len);
       if (example.includes(prefix)) {
-        return example.replace(prefix, hint);
+        const rLen = Math.max(Math.round(reading.length * len / word.length), 1);
+        return { found: prefix, stemReading: reading.slice(0, rLen) };
       }
     }
-    // Fallback: prepend hint
-    return hint + '　' + example;
+    return null;
   },
 
-  // Replace word in example with blank for quiz
+  // Replace word in example with two-line hint (for flashcard)
+  makeExampleWithHint(example, word, reading) {
+    const match = this.findStemInExample(example, word, reading);
+    if (match) {
+      const hint = this.makeHintHTML(match.found, match.stemReading);
+      return example.replace(match.found, hint);
+    }
+    return this.makeHintHTML(word, reading) + '　' + example;
+  },
+
+  // Replace word in example with blank (for quiz)
   blankWordInExample(example, word) {
     const blank = '【　　　】';
-    if (example.includes(word)) return example.replace(word, blank);
-    const suffixes = ['する', 'い', 'な', 'に浸る', 'の念', 'たる'];
-    for (const suffix of suffixes) {
-      if (word.endsWith(suffix)) {
-        const stem = word.slice(0, -suffix.length);
-        if (stem.length >= 1 && example.includes(stem)) return example.replace(stem, blank);
-      }
-    }
-    for (let len = word.length - 1; len >= 2; len--) {
-      const prefix = word.slice(0, len);
-      if (example.includes(prefix)) return example.replace(prefix, blank);
-    }
+    const match = this.findStemInExample(example, word, '');
+    if (match) return example.replace(match.found, blank);
     return blank + '　' + example;
   },
 
