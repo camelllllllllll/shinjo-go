@@ -654,6 +654,24 @@ const app = {
     return hint + '　' + example;
   },
 
+  // Replace word in example with blank for quiz
+  blankWordInExample(example, word) {
+    const blank = '【　　　】';
+    if (example.includes(word)) return example.replace(word, blank);
+    const suffixes = ['する', 'い', 'な', 'に浸る', 'の念', 'たる'];
+    for (const suffix of suffixes) {
+      if (word.endsWith(suffix)) {
+        const stem = word.slice(0, -suffix.length);
+        if (stem.length >= 1 && example.includes(stem)) return example.replace(stem, blank);
+      }
+    }
+    for (let len = word.length - 1; len >= 2; len--) {
+      const prefix = word.slice(0, len);
+      if (example.includes(prefix)) return example.replace(prefix, blank);
+    }
+    return blank + '　' + example;
+  },
+
   renderFlashcard() {
     if (this.fcIndex >= this.fcCards.length) {
       const total = this.fcCards.length;
@@ -739,8 +757,9 @@ const app = {
     const w = q.correct;
     let html = '<div class="quiz-question">';
     if (this.quizMode === 'A') {
-      html += `<div class="q-label">次の場面にふさわしい心情語は？</div>`;
-      html += `<div class="q-text">「${w.example}」</div>`;
+      const blanked = this.blankWordInExample(w.example, w.word);
+      html += `<div class="q-label">【　　　】に入る心情語は？</div>`;
+      html += `<div class="q-text">「${blanked}」</div>`;
     } else {
       html += `<div class="q-label">「${w.word}」の意味は？</div>`;
     }
