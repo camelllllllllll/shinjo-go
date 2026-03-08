@@ -184,6 +184,32 @@ button { cursor:pointer; border:none; font-family:inherit; font-size:inherit; }
 .notification { position:fixed; top:20px; right:20px; background:var(--success); color:#fff; padding:12px 20px; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:200; animation:slideIn 0.3s; }
 .notification.error { background:var(--danger); }
 @keyframes slideIn { from{transform:translateX(100px);opacity:0} to{transform:translateX(0);opacity:1} }
+
+/* Setup Panel */
+#setup-panel { padding:20px; max-width:600px; margin:0 auto; }
+.setup-content { background:var(--card); border-radius:var(--radius); padding:24px; box-shadow:var(--shadow); }
+.setup-content h3 { font-size:1.2rem; margin-bottom:20px; text-align:center; color:var(--primary); }
+.setup-section { margin-bottom:20px; }
+.setup-section > label { display:block; font-size:0.9rem; font-weight:600; color:var(--text-light); margin-bottom:8px; }
+.setup-options { display:flex; gap:8px; flex-wrap:wrap; }
+.setup-btn { padding:10px 18px; border-radius:10px; font-size:0.95rem; background:#e2e8f0; color:var(--text); transition:all 0.2s; }
+.setup-btn.active { background:var(--primary); color:#fff; }
+.setup-btn:hover { opacity:0.85; }
+.setup-stats { background:var(--primary-light); border-radius:8px; padding:14px; margin:16px 0; font-size:0.88rem; color:var(--text); line-height:1.6; }
+.setup-start { display:block; width:100%; padding:14px; border-radius:10px; font-size:1.1rem; font-weight:bold; background:var(--primary); color:#fff; margin-top:16px; }
+.setup-start:hover { background:var(--primary-dark); }
+.setup-start:disabled { background:#94a3b8; cursor:not-allowed; }
+
+/* Result actions */
+.result-actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:16px; }
+.btn-retry-missed { background:var(--warning); color:#fff; padding:12px 24px; border-radius:10px; font-size:1rem; font-weight:600; }
+.btn-retry-missed:hover { opacity:0.9; }
+
+/* Home log stats */
+.home-log-stats { margin-top:12px; display:flex; gap:12px; flex-wrap:wrap; }
+.log-stat-item { background:var(--card); border-radius:8px; padding:10px 14px; box-shadow:var(--shadow); flex:1; min-width:100px; text-align:center; }
+.log-stat-item .stat-num { font-size:1.3rem; font-weight:bold; color:var(--primary); }
+.log-stat-item .stat-label { font-size:0.75rem; color:var(--text-light); }
 </style>
 </head>
 <body>
@@ -230,6 +256,7 @@ button { cursor:pointer; border:none; font-family:inherit; font-size:inherit; }
     <h3>学習進捗</h3>
     <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
     <div class="progress-text" id="progressText">0 / 0 語 習得済み</div>
+    <div class="home-log-stats" id="homeLogStats"></div>
   </div>
 </div>
 
@@ -300,7 +327,36 @@ button { cursor:pointer; border:none; font-family:inherit; font-size:inherit; }
   <div class="match-complete hidden" id="matchComplete">
     <div class="time-big" id="matchFinalTime">00:00</div>
     <p>クリア！おめでとう！</p>
-    <button class="quiz-next mt-12" onclick="app.startMatching()">もう一度</button>
+    <div class="result-actions">
+      <button class="quiz-next" onclick="app.switchMode('matching')">設定に戻る</button>
+      <button class="quiz-next" onclick="app.startMatchingWithData(app.getSetupWords())">もう一度</button>
+    </div>
+  </div>
+</div>
+
+<!-- Setup Panel (shared for flashcard/quiz/matching) -->
+<div id="setup-panel" class="hidden">
+  <div class="setup-content">
+    <h3 id="setupTitle">出題設定</h3>
+    <div class="setup-section">
+      <label>出題数</label>
+      <div class="setup-options" id="setupCountOptions">
+        <button class="setup-btn" onclick="app.setSetupCount(20,this)">20問</button>
+        <button class="setup-btn" onclick="app.setSetupCount(50,this)">50問</button>
+        <button class="setup-btn" onclick="app.setSetupCount(100,this)">100問</button>
+        <button class="setup-btn active" onclick="app.setSetupCount(0,this)">すべて</button>
+      </div>
+    </div>
+    <div class="setup-section">
+      <label>出題範囲</label>
+      <div class="setup-options" id="setupSourceOptions">
+        <button class="setup-btn active" onclick="app.setSetupSource('all',this)">すべて</button>
+        <button class="setup-btn" onclick="app.setSetupSource('weak',this)">苦手な語</button>
+        <button class="setup-btn" onclick="app.setSetupSource('missed',this)">前回間違えた語</button>
+      </div>
+    </div>
+    <div class="setup-stats" id="setupStats"></div>
+    <button class="setup-start" id="setupStartBtn" onclick="app.startWithSetup()">スタート</button>
   </div>
 </div>
 
@@ -500,11 +556,16 @@ const app = {
   quizMode: 'A', quizQuestions: [], quizIndex: 0, quizCorrect: 0, quizAnswered: false,
   // Matching state
   matchCards: [], matchSelected: null, matchPairs: 0, matchTotal: 0, matchTimer: null, matchSeconds: 0,
+  // Setup state
+  setupCount: 0, setupSource: 'all', pendingMode: null,
+  // Learning log
+  learningLog: {}, lastMissed: [], sessionMissed: [],
 
   init() {
     const saved = localStorage.getItem('shinjo-custom-data');
     this.data = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_DATA));
     this.loadProgress();
+    this.loadLearningLog();
     this.populateFilters();
     this.updateProgress();
   },
@@ -538,9 +599,15 @@ const app = {
   applyFilter() {
     this.filterScene = document.getElementById('filterScene').value;
     if (this.currentMode === 'list') this.renderList();
-    else if (this.currentMode === 'flashcard') this.startFlashcards();
-    else if (this.currentMode === 'quiz') this.startQuiz();
-    else if (this.currentMode === 'matching') this.startMatching();
+    else if (['flashcard','quiz','matching'].includes(this.currentMode)) {
+      if (!document.getElementById('setup-panel').classList.contains('hidden')) {
+        this.updateSetupStats();
+      } else {
+        ['flashcard-view','quiz-view','matching-view'].forEach(id => document.getElementById(id).classList.add('hidden'));
+        if (this.matchTimer) { clearInterval(this.matchTimer); this.matchTimer = null; }
+        this.showSetup(this.currentMode);
+      }
+    }
     else if (this.currentMode === 'edit') this.renderEditList();
   },
 
@@ -554,34 +621,34 @@ const app = {
   switchMode(mode) {
     this.currentMode = mode;
     document.getElementById('home').classList.add('hidden');
-    document.getElementById('filterBar').classList.toggle('hidden', mode === 'edit');
-    document.getElementById('list-view').classList.add('hidden');
-    document.getElementById('flashcard-view').classList.add('hidden');
-    document.getElementById('quiz-view').classList.add('hidden');
-    document.getElementById('matching-view').classList.add('hidden');
-    document.getElementById('edit-view').classList.add('hidden');
+    ['filterBar','list-view','flashcard-view','quiz-view','matching-view','edit-view','setup-panel'].forEach(id => {
+      document.getElementById(id).classList.add('hidden');
+    });
     document.getElementById('backBtn').classList.remove('hidden');
 
     const titles = { list:'一覧', flashcard:'フラッシュカード', quiz:'クイズ', matching:'マッチング', edit:'編集モード' };
     document.getElementById('headerTitle').textContent = titles[mode] || '心情語マスター';
 
-    if (mode === 'list') { document.getElementById('list-view').classList.remove('hidden'); this.renderList(); }
-    else if (mode === 'flashcard') { document.getElementById('flashcard-view').classList.remove('hidden'); this.startFlashcards(); }
-    else if (mode === 'quiz') { document.getElementById('quiz-view').classList.remove('hidden'); this.startQuiz(); }
-    else if (mode === 'matching') { document.getElementById('matching-view').classList.remove('hidden'); this.startMatching(); }
-    else if (mode === 'edit') { document.getElementById('edit-view').classList.remove('hidden'); this.renderEditList(); }
+    if (['flashcard','quiz','matching'].includes(mode)) {
+      document.getElementById('filterBar').classList.remove('hidden');
+      this.showSetup(mode);
+    } else if (mode === 'list') {
+      document.getElementById('filterBar').classList.remove('hidden');
+      document.getElementById('list-view').classList.remove('hidden');
+      this.renderList();
+    } else if (mode === 'edit') {
+      document.getElementById('edit-view').classList.remove('hidden');
+      this.renderEditList();
+    }
   },
 
   goHome() {
     this.currentMode = 'home';
     if (this.matchTimer) { clearInterval(this.matchTimer); this.matchTimer = null; }
     document.getElementById('home').classList.remove('hidden');
-    document.getElementById('filterBar').classList.add('hidden');
-    document.getElementById('list-view').classList.add('hidden');
-    document.getElementById('flashcard-view').classList.add('hidden');
-    document.getElementById('quiz-view').classList.add('hidden');
-    document.getElementById('matching-view').classList.add('hidden');
-    document.getElementById('edit-view').classList.add('hidden');
+    ['filterBar','list-view','flashcard-view','quiz-view','matching-view','edit-view','setup-panel'].forEach(id => {
+      document.getElementById(id).classList.add('hidden');
+    });
     document.getElementById('backBtn').classList.add('hidden');
     document.getElementById('headerTitle').textContent = '心情語マスター';
     this.updateProgress();
@@ -615,10 +682,40 @@ const app = {
 
   // === Flashcard ===
   startFlashcards() {
-    this.fcCards = this.shuffle([...this.getFiltered()]);
+    this.startFlashcardsWithData(this.getFiltered());
+  },
+
+  startFlashcardsWithData(data) {
+    this.fcCards = this.shuffle([...data]);
     this.fcIndex = 0;
     this.fcKnown = new Set();
+    this.sessionMissed = [];
     if (!this.fcCards.length) { document.getElementById('flashcard-view').innerHTML = '<p class="text-center" style="padding:40px">該当する心情語がありません</p>'; return; }
+    // Restore flashcard DOM if it was overwritten by result screen
+    const container = document.querySelector('.flashcard-container');
+    if (!container || !container.querySelector('.flashcard')) {
+      document.getElementById('flashcard-view').innerHTML = `
+        <div class="card-counter" id="cardCounter">1 / ${this.fcCards.length}</div>
+        <div class="flashcard-container">
+          <div class="flashcard" id="flashcard" onclick="app.flipCard()">
+            <div class="flashcard-face flashcard-front">
+              <div class="fc-meaning" id="fcMeaning"></div>
+              <div class="fc-example-hint" id="fcExampleHint"></div>
+              <div class="fc-meta"><span class="scene-tag" id="fcScene"></span><span class="level-badge" id="fcLevel"></span></div>
+              <div class="hint">タップして答えを見る</div>
+            </div>
+            <div class="flashcard-face flashcard-back">
+              <div class="fc-answer" id="fcAnswer"></div>
+              <div class="fc-answer-reading" id="fcAnswerReading"></div>
+            </div>
+          </div>
+        </div>
+        <div class="flashcard-actions">
+          <button class="btn-dunno" onclick="app.fcMark(false)">まだ</button>
+          <button class="btn-know" onclick="app.fcMark(true)">覚えた！</button>
+        </div>
+        <button class="btn-shuffle" onclick="app.fcShuffle()">🔀 シャッフル</button>`;
+    }
     this.renderFlashcard();
   },
 
@@ -698,10 +795,16 @@ const app = {
 
   renderFlashcard() {
     if (this.fcIndex >= this.fcCards.length) {
+      this.saveSessionMissed();
       const total = this.fcCards.length;
       const known = this.fcKnown.size;
-      document.getElementById('flashcard-view').querySelector('.flashcard-container').innerHTML =
-        `<div style="text-align:center;padding:40px"><div style="font-size:2rem;font-weight:bold;color:var(--primary)">${known} / ${total}</div><p>覚えた語数</p><button class="quiz-next mt-12" onclick="app.startFlashcards()">もう一度</button></div>`;
+      const missed = total - known;
+      let retryBtn = '';
+      if (missed > 0) {
+        retryBtn = `<button class="btn-retry-missed" onclick="app.retryMissed()">間違えた${missed}問をやり直す</button>`;
+      }
+      document.getElementById('flashcard-view').innerHTML =
+        `<div style="text-align:center;padding:40px"><div style="font-size:2rem;font-weight:bold;color:var(--primary)">${known} / ${total}</div><p>覚えた語数</p><div class="result-actions"><button class="quiz-next" onclick="app.switchMode('flashcard')">設定に戻る</button>${retryBtn}</div></div>`;
       return;
     }
     const w = this.fcCards[this.fcIndex];
@@ -723,9 +826,12 @@ const app = {
   flipCard() { document.getElementById('flashcard').classList.toggle('flipped'); },
 
   fcMark(known) {
+    const card = this.fcCards[this.fcIndex];
+    this.recordAttempt(card.id, known);
     if (known) {
-      this.fcKnown.add(this.fcCards[this.fcIndex].id);
-      this.markLearned(this.fcCards[this.fcIndex].id);
+      this.fcKnown.add(card.id);
+    } else {
+      this.sessionMissed.push(card.id);
     }
     this.fcIndex++;
     this.renderFlashcard();
@@ -746,25 +852,31 @@ const app = {
   },
 
   startQuiz() {
-    const data = this.getFiltered();
+    this.startQuizWithData(this.getFiltered());
+  },
+
+  startQuizWithData(data) {
+    const allData = this.data; // for generating wrong choices
     if (data.length < 4) {
       document.getElementById('quizContent').innerHTML = '<p class="text-center" style="padding:40px">クイズには最低4語が必要です。フィルタを変更してください。</p>';
       return;
     }
-    this.quizQuestions = this.generateQuizQuestions(data, Math.min(10, data.length));
+    this.quizQuestions = this.generateQuizQuestions(data, data.length, allData);
     this.quizIndex = 0;
     this.quizCorrect = 0;
     this.quizAnswered = false;
+    this.sessionMissed = [];
     document.getElementById('quizScore').textContent = `0 / ${this.quizQuestions.length}`;
     this.renderQuizQuestion();
   },
 
-  generateQuizQuestions(data, count) {
-    const shuffled = this.shuffle([...data]);
+  generateQuizQuestions(selected, count, allData) {
+    const pool = allData || selected;
+    const shuffled = this.shuffle([...selected]);
     const questions = [];
     for (let i = 0; i < count; i++) {
       const correct = shuffled[i];
-      const others = data.filter(w => w.id !== correct.id);
+      const others = pool.filter(w => w.id !== correct.id);
       const wrongChoices = this.shuffle(others).slice(0, 3);
       const options = this.shuffle([correct, ...wrongChoices]);
       questions.push({ correct, options });
@@ -802,15 +914,18 @@ const app = {
     this.quizAnswered = true;
     const q = this.quizQuestions[this.quizIndex];
     const correctIdx = q.options.indexOf(q.correct);
+    const isCorrect = idx === correctIdx;
     const buttons = document.querySelectorAll('.quiz-option');
     buttons.forEach((btn, i) => {
       btn.classList.add('disabled');
       if (i === correctIdx) btn.classList.add('correct');
-      if (i === idx && i !== correctIdx) btn.classList.add('wrong');
+      if (i === idx && !isCorrect) btn.classList.add('wrong');
     });
-    if (idx === correctIdx) {
+    this.recordAttempt(q.correct.id, isCorrect);
+    if (isCorrect) {
       this.quizCorrect++;
-      this.markLearned(q.correct.id);
+    } else {
+      this.sessionMissed.push(q.correct.id);
     }
     document.getElementById('quizScore').textContent = `${this.quizCorrect} / ${this.quizQuestions.length}`;
     document.getElementById('quizNext').classList.remove('hidden');
@@ -822,27 +937,39 @@ const app = {
   },
 
   renderQuizResult() {
+    this.saveSessionMissed();
     const pct = Math.round((this.quizCorrect / this.quizQuestions.length) * 100);
+    const missed = this.quizQuestions.length - this.quizCorrect;
     let msg = pct >= 80 ? 'すばらしい！' : pct >= 60 ? 'いい調子！' : 'もう少し頑張ろう！';
+    let retryBtn = '';
+    if (missed > 0) {
+      retryBtn = `<button class="btn-retry-missed" onclick="app.retryMissed()">間違えた${missed}問をやり直す</button>`;
+    }
     document.getElementById('quizContent').innerHTML = `
       <div class="quiz-result">
         <div class="score-big">${this.quizCorrect} / ${this.quizQuestions.length}</div>
         <div class="score-label">正答率 ${pct}% — ${msg}</div>
-        <button class="quiz-next mt-12" onclick="app.startQuiz()">もう一度挑戦</button>
+        <div class="result-actions">
+          <button class="quiz-next" onclick="app.switchMode('quiz')">設定に戻る</button>
+          ${retryBtn}
+        </div>
       </div>`;
   },
 
   // === Matching ===
   startMatching() {
+    this.startMatchingWithData(this.getFiltered());
+  },
+
+  startMatchingWithData(data) {
     if (this.matchTimer) { clearInterval(this.matchTimer); this.matchTimer = null; }
     document.getElementById('matchComplete').classList.add('hidden');
     document.getElementById('matchGrid').classList.remove('hidden');
-    const data = this.getFiltered();
     if (data.length < 6) {
       document.getElementById('matchGrid').innerHTML = '<p class="text-center" style="padding:40px;grid-column:1/-1">マッチングには最低6語が必要です。</p>';
       return;
     }
-    const picked = this.shuffle([...data]).slice(0, 6);
+    const picked = this.shuffle([...data]).slice(0, Math.min(data.length, 8));
     let cards = [];
     picked.forEach(w => {
       cards.push({ id: w.id, type: 'word', text: w.word, pairId: w.id });
@@ -898,7 +1025,7 @@ const app = {
         cards[idx].classList.add('matched');
         cards[this.matchSelected].classList.remove('selected');
         this.matchPairs++;
-        this.markLearned(card.pairId);
+        this.recordAttempt(card.pairId, true);
         document.getElementById('matchPairs').textContent = `${this.matchPairs} / ${this.matchTotal}`;
         if (this.matchPairs === this.matchTotal) {
           clearInterval(this.matchTimer);
@@ -1070,6 +1197,153 @@ const app = {
     const pct = total ? Math.round((learned / total) * 100) : 0;
     document.getElementById('progressFill').style.width = pct + '%';
     document.getElementById('progressText').textContent = `${learned} / ${total} 語 習得済み（${pct}%）`;
+    // Show learning log stats on home
+    const logStats = document.getElementById('homeLogStats');
+    if (logStats) {
+      const totalAttempts = Object.values(this.learningLog).reduce((s, l) => s + l.total, 0);
+      const totalCorrect = Object.values(this.learningLog).reduce((s, l) => s + l.correct, 0);
+      const weakCount = this.getWeakWords(this.data).length;
+      const missedCount = this.lastMissed.length;
+      logStats.innerHTML = `
+        <div class="log-stat-item"><div class="stat-num">${totalAttempts}</div><div class="stat-label">総回答数</div></div>
+        <div class="log-stat-item"><div class="stat-num">${totalAttempts ? Math.round(totalCorrect/totalAttempts*100) : 0}%</div><div class="stat-label">正答率</div></div>
+        <div class="log-stat-item"><div class="stat-num">${weakCount}</div><div class="stat-label">苦手な語</div></div>
+        <div class="log-stat-item"><div class="stat-num">${missedCount}</div><div class="stat-label">前回の不正解</div></div>
+      `;
+    }
+  },
+
+  // === Learning Log ===
+  loadLearningLog() {
+    const saved = localStorage.getItem('shinjo-learning-log');
+    this.learningLog = saved ? JSON.parse(saved) : {};
+    const missed = localStorage.getItem('shinjo-last-missed');
+    this.lastMissed = missed ? JSON.parse(missed) : [];
+  },
+
+  saveLearningLog() {
+    localStorage.setItem('shinjo-learning-log', JSON.stringify(this.learningLog));
+  },
+
+  recordAttempt(id, correct) {
+    if (!this.learningLog[id]) this.learningLog[id] = { total: 0, correct: 0 };
+    this.learningLog[id].total++;
+    if (correct) this.learningLog[id].correct++;
+    this.learningLog[id].lastCorrect = correct;
+    this.saveLearningLog();
+    if (correct) this.markLearned(id);
+  },
+
+  saveSessionMissed() {
+    localStorage.setItem('shinjo-last-missed', JSON.stringify(this.sessionMissed));
+    this.lastMissed = [...this.sessionMissed];
+  },
+
+  getWeakWords(data) {
+    return data.filter(w => {
+      const log = this.learningLog[w.id];
+      return log && log.total >= 1 && (log.correct / log.total) < 0.8;
+    });
+  },
+
+  getMissedWords(data) {
+    return data.filter(w => this.lastMissed.includes(w.id));
+  },
+
+  // === Setup Panel ===
+  showSetup(mode) {
+    this.pendingMode = mode;
+    this.setupCount = 0;
+    this.setupSource = 'all';
+    const titles = { flashcard:'フラッシュカード', quiz:'クイズ', matching:'マッチング' };
+    document.getElementById('setupTitle').textContent = titles[mode] + ' — 出題設定';
+    // Reset buttons
+    document.querySelectorAll('#setupCountOptions .setup-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('#setupCountOptions .setup-btn:last-child').classList.add('active');
+    document.querySelectorAll('#setupSourceOptions .setup-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('#setupSourceOptions .setup-btn:first-child').classList.add('active');
+    this.updateSetupStats();
+    document.getElementById('setup-panel').classList.remove('hidden');
+  },
+
+  setSetupCount(n, btn) {
+    this.setupCount = n;
+    document.querySelectorAll('#setupCountOptions .setup-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    this.updateSetupStats();
+  },
+
+  setSetupSource(src, btn) {
+    this.setupSource = src;
+    document.querySelectorAll('#setupSourceOptions .setup-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    this.updateSetupStats();
+  },
+
+  updateSetupStats() {
+    const base = this.getFiltered();
+    let pool;
+    if (this.setupSource === 'weak') pool = this.getWeakWords(base);
+    else if (this.setupSource === 'missed') pool = this.getMissedWords(base);
+    else pool = base;
+
+    const count = this.setupCount > 0 ? Math.min(this.setupCount, pool.length) : pool.length;
+    const weakCount = this.getWeakWords(base).length;
+    const missedCount = this.getMissedWords(base).length;
+
+    let html = `対象: <strong>${pool.length}語</strong>`;
+    if (this.setupCount > 0 && pool.length > this.setupCount) {
+      html += ` → <strong>${count}問</strong>をランダム出題`;
+    }
+    html += `<br>苦手な語: ${weakCount}語 ／ 前回間違えた語: ${missedCount}語`;
+
+    document.getElementById('setupStats').innerHTML = html;
+
+    const btn = document.getElementById('setupStartBtn');
+    const minRequired = this.pendingMode === 'matching' ? 6 : (this.pendingMode === 'quiz' ? 4 : 1);
+    btn.disabled = pool.length < minRequired;
+    if (btn.disabled) {
+      document.getElementById('setupStats').innerHTML += `<br><span style="color:var(--danger)">※ ${minRequired}語以上必要です</span>`;
+    }
+  },
+
+  getSetupWords() {
+    const base = this.getFiltered();
+    let pool;
+    if (this.setupSource === 'weak') pool = this.getWeakWords(base);
+    else if (this.setupSource === 'missed') pool = this.getMissedWords(base);
+    else pool = base;
+    pool = this.shuffle([...pool]);
+    if (this.setupCount > 0 && pool.length > this.setupCount) {
+      pool = pool.slice(0, this.setupCount);
+    }
+    return pool;
+  },
+
+  startWithSetup() {
+    const mode = this.pendingMode;
+    this.sessionMissed = [];
+    document.getElementById('setup-panel').classList.add('hidden');
+
+    if (mode === 'flashcard') {
+      document.getElementById('flashcard-view').classList.remove('hidden');
+      this.startFlashcardsWithData(this.getSetupWords());
+    } else if (mode === 'quiz') {
+      document.getElementById('quiz-view').classList.remove('hidden');
+      this.startQuizWithData(this.getSetupWords());
+    } else if (mode === 'matching') {
+      document.getElementById('matching-view').classList.remove('hidden');
+      this.startMatchingWithData(this.getSetupWords());
+    }
+  },
+
+  // === Retry Missed ===
+  retryMissed() {
+    const missedData = this.data.filter(w => this.sessionMissed.includes(w.id));
+    if (!missedData.length) return;
+    this.sessionMissed = [];
+    if (this.currentMode === 'flashcard') this.startFlashcardsWithData(missedData);
+    else if (this.currentMode === 'quiz') this.startQuizWithData(missedData);
   },
 
   // === Utilities ===
